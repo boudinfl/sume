@@ -180,9 +180,51 @@ class ConceptBasedILPSummarizer:
 
         self.sentences = pruned_sentences
 
+    def prune_concepts(self, method="threshold", value=3):
+        """Prune the concepts for efficient summarization.
+
+        Args:
+            method (str): the method for pruning concepts that can be whether by
+              using a minimal value for concept scores (threshold) or using the
+              top-N highest scoring concepts (top-n), defaults to threshold.
+            value (int): the value used for pruning concepts, defaults to 3.
+
+        """
+        # 'threshold' pruning method
+        if method == "threshold":
+
+            # iterates over the concept weights
+            concepts = self.weights.keys()
+            for concept in concepts:
+                if self.weights[concept] < value:
+                    del self.weights[concept]
+
+        # 'top-n' pruning method
+        elif method == "top-n":
+
+            # sort concepts by scores
+            sorted_concepts = sorted( self.weights, 
+                                      key=lambda x : self.weights[x], 
+                                      reverse=True )
+
+            # iterates over the concept weights
+            concepts = self.weights.keys()
+            for concept in concepts:
+                if not concept in sorted_concepts[:value]:
+                    del self.weights[concept]
+
+        # iterates over the sentences
+        for i in range(len(self.sentences)):
+
+            # current sentence concepts
+            concepts = self.sentences[i].concepts
+
+            # prune concepts
+            self.sentences[i].concepts = [c for c in concepts \
+                                          if self.weights.has_key(c)]
+
     def solve_ilp_problem(self, 
                           summary_size=100,
-                          minimum_concept_score=3,
                           solver='gurobi',
                           excluded_solutions=[]):
         """Solve the ILP formulation of the concept-based model.
@@ -190,8 +232,6 @@ class ConceptBasedILPSummarizer:
         Args:
             summary_size (int): the maximum size in words of the summary, 
               defaults to 100.
-            minimum_concept_score (int): the threshold used for filtering
-              concepts, defaults to 3.
             solver (str): the solver used, defaults to gurobi.
             excluded_solutions (list of list): a list of subsets of sentences
               that are to be excluded, defaults to []
@@ -201,11 +241,8 @@ class ConceptBasedILPSummarizer:
               and the set of selected sentences as a tuple.
 
         """
-        # filter the concepts, sorted by alphabetical order
-        concepts =  sorted([u for u in self.weights.keys() \
-                            if self.weights[u] >= minimum_concept_score])
-
         # initialize container shortcuts
+        concepts = self.weights.keys()
         w = self.weights
         L = summary_size
         C = len(concepts)
