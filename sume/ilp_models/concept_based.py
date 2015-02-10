@@ -248,6 +248,9 @@ class ConceptBasedILPSummarizer:
         C = len(concepts)
         S = len(self.sentences)
 
+        #### HACK Sort keys
+        concepts = sorted(self.weights, key=self.weights.get, reverse=True)
+
         # formulation of the ILP problem 
         prob = pulp.LpProblem(self.input_directory, pulp.LpMaximize)
 
@@ -290,6 +293,9 @@ class ConceptBasedILPSummarizer:
             prob.solve(pulp.GUROBI(msg = 0))
         elif solver == 'glpk':
             prob.solve(pulp.GLPK(msg = 0))
+        elif solver == 'cplex':
+            prob.solve(pulp.CPLEX(msg = 0))
+            # prob.writeLP('test.lp')
         else:
             sys.exit('no solver specified')
 
