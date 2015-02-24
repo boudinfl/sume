@@ -13,6 +13,7 @@ from sume.base import untokenize
 import os
 import re
 import codecs
+import bisect
 
 import nltk
 import pulp
@@ -223,16 +224,130 @@ class ConceptBasedILPSummarizer:
             self.sentences[i].concepts = [c for c in concepts \
                                           if self.weights.has_key(c)]
 
+    def greedy_approximation(self, r=1.0, summary_size=100):
+        """Greedy approximation of the ILP model.
+
+        Args:
+            r (int): the scaling factor, defaults to 1.
+            summary_size (int): the maximum size in words of the summary, 
+              defaults to 100.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated 
+              objective function and the set of selected sentences as a tuple.
+
+        """
+
+        # initialize the set of selected sentences
+        G = set([])
+
+        # initialize the set of sentences
+        U = set(range(len(self.sentences)))
+
+        # initialize the concepts contained in G
+        G_concepts = set([])
+
+        # initialize the size of the sentences in G
+        G_size = 0
+
+        # greedily select a sentence
+        while len(U) > 0:
+
+            ####################################################################
+            # COMPUTE THE GAINS FOR EACH SENTENCE IN U
+            ####################################################################
+
+            # compute the score of G
+            f_G = sum([self.weights[i] for i in G_concepts])
+
+            # convert U in a list
+            U_list = list(U)
+
+            # initialize the gain container
+            gains = []
+
+            # loop through the set of sentences
+            for u in U_list:
+
+                # do not consider sentences that are too long
+                if G_size + self.sentences[u].length > summary_size:
+                    gains.append(0)
+                    continue
+
+                # get the concepts from G union u
+                G_u = G_concepts.union(self.sentences[u].concepts)
+
+                # compute the score of G union u
+                f_G_u = sum([self.weights[i] for i in G_u])
+
+                # compute the gain for u
+                gain = (f_G_u-f_G) / float(self.sentences[u].length)**r
+
+                # add the gain for u in the container
+                gains.append(gain)
+
+            # find the maximum gain
+            max_gain = max(gains)
+
+            # find the indexes for the maximum gain
+            ks = [i for i in xrange(len(U_list)) if gains[i] == max_gain]
+
+            # select the shortest sentence
+            sizes = [self.sentences[i].length for i in ks]
+            k = U_list[ks[sizes.index(min(sizes))]]
+
+            # compute the new size
+            size = G_size + self.sentences[k].length
+
+            # compute the score of G union k
+            f_G_k = sum([self.weights[i] for i in \
+                         G_concepts.union(self.sentences[k].concepts)])
+
+            # if adding the sentence is permitted
+            if size <= summary_size and f_G_k-f_G >= 0:
+
+                # add the sentence to G
+                G.add(k)
+
+                # recompute the concepts for G
+                G_concepts = []
+                for i in G:
+                    G_concepts.extend(self.sentences[i].concepts)
+                G_concepts = set(G_concepts)
+
+                # modify the size of G
+                G_size = size 
+
+            # remove sentence k from U
+            U.remove(k)
+
+        # compute the objective function for G
+        f_G = sum([self.weights[i] for i in G_concepts])
+
+        # find the singleton with the largest objective value
+        obj_values = []
+        for v in range(len(self.sentences)):
+            obj = sum([self.weights[i] for i in self.sentences[v].concepts])
+            if self.sentences[v].length <= summary_size:
+                bisect.insort(obj_values, (obj, [v]))
+
+        # return singleton if better
+        if obj_values[-1][0] > f_G:
+            return obj_values[-1]
+
+        # returns the (objective function value, solution) tuple
+        return f_G, G
+
     def solve_ilp_problem(self, 
                           summary_size=100,
-                          solver='gurobi',
+                          solver='glpk',
                           excluded_solutions=[]):
         """Solve the ILP formulation of the concept-based model.
 
         Args:
             summary_size (int): the maximum size in words of the summary, 
               defaults to 100.
-            solver (str): the solver used, defaults to gurobi.
+            solver (str): the solver used, defaults to glpk.
             excluded_solutions (list of list): a list of subsets of sentences
               that are to be excluded, defaults to []
 
