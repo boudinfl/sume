@@ -14,6 +14,7 @@ import os
 import re
 import codecs
 import bisect
+import sys
 
 import nltk
 import pulp
@@ -337,6 +338,106 @@ class ConceptBasedILPSummarizer:
 
         # returns the (objective function value, solution) tuple
         return f_G, G
+
+    def greedy_approximation2(self, r=1.0, summary_size=100):
+        """Greedy approximation of the ILP model.
+
+        Args:
+            r (int): the scaling factor, defaults to 1.
+            summary_size (int): the maximum size in words of the summary, 
+              defaults to 100.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated 
+              objective function and the set of selected sentences as a tuple.
+
+        """
+
+        # initialize the set of selected sentences
+        G = set()
+
+        # initialize the set of sentences
+        U = set(range(0,len(self.sentences)))
+
+        # initialize the concepts contained in G
+        G_concepts = set()
+
+        # initialize the size of the sentences in G
+        G_size = 0
+
+        # initialize the score of G
+        G_score = 0
+
+        # greedily select a sentence
+        while len(U) > 0:
+
+            ####################################################################
+            # COMPUTE THE GAINS FOR EACH SENTENCE IN U
+            ####################################################################
+
+            best_u = None
+            best_sentence = None
+            best_gain = None
+            best_score_delta = None
+
+            # loop through the set of sentences
+            for u in U:
+
+                sentence = self.sentences[u]
+
+                # do not consider sentences that are too long
+                if G_size + sentence.length > summary_size:
+                    continue
+
+                # compute the score difference if we add the sentence
+                u_score_delta = sum(self.weights[c] for c in
+                                    set(sentence.concepts) - G_concepts)
+
+                # compute the normalization of the score difference by
+                # the sentence length
+                u_gain = u_score_delta / float(sentence.length)
+
+                if u_gain == best_gain\
+                   and sentence.length < best_sentence.length\
+                   or u_gain > best_gain:
+                    best_u = u
+                    best_sentence = sentence
+                    best_gain = u_gain
+                    best_score_delta = u_score_delta
+
+            # add the best sentence if its gain is non null
+            if best_gain > 0:
+
+                # add the sentence to G
+                G.add(best_u)
+
+                # update G concepts
+                G_concepts |= set(best_sentence.concepts)
+
+                # update G size
+                G_size += best_sentence.length
+
+                # update G score
+                G_score += best_score_delta
+
+            # remove sentence from U
+            U.remove(u)
+
+        # find the singleton with the largest objective value
+        obj_values = []
+        for v in range(len(self.sentences)):
+            obj = sum([self.weights[i] for i in self.sentences[v].concepts])
+            if self.sentences[v].length <= summary_size:
+                bisect.insort(obj_values, (obj, [v]))
+
+        # return singleton if better
+        if obj_values[-1][0] > G_score:
+            print G_score
+            return obj_values[-1]
+
+        # returns the (objective function value, solution) tuple
+        return G_score, G
+
 
     def solve_ilp_problem(self, 
                           summary_size=100,
