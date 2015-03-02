@@ -390,8 +390,9 @@ class ConceptBasedILPSummarizer:
                     continue
 
                 # compute the score difference if we add the sentence
-                u_score_delta = sum(self.weights[c] for c in
-                                    set(sentence.concepts) - G_concepts)
+                u_score_delta = sum(self.weights[c]
+                                    for c in sentence.concepts
+                                    if c not in G_concepts)
 
                 # compute the normalization of the score difference by
                 # the sentence length
