@@ -461,9 +461,12 @@ class ConceptBasedILPSummarizer:
         # initialize the score of the best singleton
         best_singleton_score = 0
 
+        # compute indeces of our sentences
+        sentences = range(len(self.sentences))
+
         # compute initial weights and fill the reverse index
         # while keeping track of the best singleton solution
-        for i in range(len(self.sentences)):
+        for i in sentences:
             weight = 0
             for concept in set(self.sentences[i].concepts):
                 c2s[concept].add(i)
@@ -477,8 +480,7 @@ class ConceptBasedILPSummarizer:
         selected_subset, selected_length, selected_score = set(), 0, 0
 
         # greedily select a sentence
-        sentences = range(len(self.sentences))
-        while sentences:
+        while True:
 
             ####################################################################
             # RETRIEVE THE BEST SENTENCE
@@ -494,19 +496,22 @@ class ConceptBasedILPSummarizer:
             # select the first sentence that fits in the length limit
             for sentence_gain, rev_length, sentence_index in sorted_gain:
                 if selected_length - rev_length <= summary_size:
-                    best_gain_index = sentence_index
                     break
             # if we don't find a sentence, break out of the main while loop
             else:
                 break
 
+            # if the gain is null, break out of the main while loop
+            if not weights[sentence_index]:
+                break
+
             # update the selected subset properties
-            selected_subset.add(best_gain_index)
-            selected_score += weights[best_gain_index]
-            selected_length += self.sentences[best_gain_index].length
+            selected_subset.add(sentence_index)
+            selected_score += weights[sentence_index]
+            selected_length += self.sentences[sentence_index].length
 
             # update sentence weights with the reverse index
-            for concept in set(self.sentences[best_gain_index].concepts):
+            for concept in set(self.sentences[sentence_index].concepts):
                 for sentence in c2s[concept]:
                     weights[sentence] -= self.weights[concept]
 
