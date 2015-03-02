@@ -10,6 +10,8 @@
 from sume.base import Sentence
 from sume.base import untokenize
 
+from collections import defaultdict
+
 import os
 import re
 import codecs
@@ -436,6 +438,84 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return selected_score, selected_sentence_indeces
 
+
+    def greedy_approximation3(self, r=1.0, summary_size=100):
+        """Greedy approximation of the ILP model.
+
+        Args:
+            r (int): the scaling factor, defaults to 1.
+            summary_size (int): the maximum size in words of the summary,
+              defaults to 100.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated
+              objective function and the set of selected sentences as a tuple.
+
+        """
+        # initialize weights
+        weights = {}
+
+        # initialize concept to sentence reverse index
+        c2s = defaultdict(set)
+
+        # initialize the score of the best singleton
+        best_singleton_score = 0
+
+        # compute initial weights and fill the reverse index
+        # while keeping track of the best singleton solution
+        for i in range(len(self.sentences)):
+            weight = 0
+            for concept in set(self.sentences[i].concepts):
+                c2s[concept].add(i)
+                weight += self.weights[concept]
+            weights[i] = weight
+            if weight > best_singleton_score:
+                best_singleton_score = weight
+                best_singleton = i
+
+        # initialize the greedy solution properties
+        selected_subset, selected_length, selected_score = set(), 0, 0
+
+        # greedily select a sentence
+        sentences = range(len(self.sentences))
+        while sentences:
+
+            ####################################################################
+            # RETRIEVE THE BEST SENTENCE
+            ####################################################################
+
+            # sort the sentences by gain and reverse length
+            sorted_gain = sorted(((weights[i] / float(self.sentences[i].length),
+                                   -self.sentences[i].length,
+                                   i)
+                                  for i in sentences),
+                                 reverse=True)
+
+            # select the first sentence that fits in the length limit
+            for sentence_gain, rev_length, sentence_index in sorted_gain:
+                if selected_length - rev_length <= summary_size:
+                    best_gain_index = sentence_index
+                    break
+            # if we don't find a sentence, break out of the main while loop
+            else:
+                break
+
+            # update the selected subset properties
+            selected_subset.add(best_gain_index)
+            selected_score += weights[best_gain_index]
+            selected_length += self.sentences[best_gain_index].length
+
+            # update sentence weights with the reverse index
+            for concept in set(self.sentences[best_gain_index].concepts):
+                for sentence in c2s[concept]:
+                    weights[sentence] -= self.weights[concept]
+
+        # check if a singleton has a better score than our greedy solution
+        if best_singleton_score > selected_score:
+            return best_singleton_score, set([best_singleton])
+
+        # returns the (objective function value, solution) tuple
+        return selected_score, selected_subset
 
     def solve_ilp_problem(self, 
                           summary_size=100,
