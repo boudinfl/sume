@@ -353,91 +353,88 @@ class ConceptBasedILPSummarizer:
 
         """
 
-        # initialize the set of selected sentences
-        G = set()
+        # initialize the set of sentence indeces
+        sentence_indeces = set(range(0,len(self.sentences)))
 
-        # initialize the set of sentences
-        U = set(range(0,len(self.sentences)))
+        # initialize the set of selected sentence indeces
+        selected_sentence_indeces = set()
 
         # initialize the concepts contained in G
-        G_concepts = set()
+        selected_concepts = set()
 
         # initialize the size of the sentences in G
-        G_size = 0
+        selected_length = 0
 
         # initialize the score of G
-        G_score = 0
+        selected_score = 0
 
         # greedily select a sentence
-        while len(U) > 0:
+        while sentence_indeces:
 
             ####################################################################
             # COMPUTE THE GAINS FOR EACH SENTENCE IN U
             ####################################################################
 
-            best_u = None
+            best_sentence_index = None
             best_sentence = None
-            best_gain = None
-            best_score_delta = None
+            best_singleton = None
+            best_singleton_score = 0
+            best_gain = 0
+            best_score_delta = 0
 
             # loop through the set of sentences
-            for u in U:
+            for sentence_index in sentence_indeces:
 
-                sentence = self.sentences[u]
+                sentence = self.sentences[sentence_index]
 
                 # do not consider sentences that are too long
-                if G_size + sentence.length > summary_size:
+                if selected_length + sentence.length > summary_size:
                     continue
 
                 # compute the score difference if we add the sentence
-                u_score_delta = sum(self.weights[c]
-                                    for c in sentence.concepts
-                                    if c not in G_concepts)
+                sentence_score_delta = sum(self.weights[c]
+                                           for c in sentence.concepts
+                                           if c not in selected_concepts)
+
+                if sentence_score_delta > best_singleton_score:
+                    best_singleton_score = sentence_score_delta
+                    best_singleton = sentence_index
 
                 # compute the normalization of the score difference by
                 # the sentence length
-                u_gain = u_score_delta / float(sentence.length)
+                sentence_gain = sentence_score_delta / float(sentence.length)
 
-                if u_gain == best_gain\
+                if sentence_gain == best_gain\
                    and sentence.length < best_sentence.length\
-                   or u_gain > best_gain:
-                    best_u = u
+                   or sentence_gain > best_gain:
+                    best_sentence_index = sentence_index
                     best_sentence = sentence
-                    best_gain = u_gain
-                    best_score_delta = u_score_delta
+                    best_gain = sentence_gain
+                    best_score_delta = sentence_score_delta
 
             # add the best sentence if its gain is non null
             if best_gain > 0:
 
-                # add the sentence to G
-                G.add(best_u)
+                # add the sentence index to the selected set
+                selected_sentence_indeces.add(best_sentence_index)
 
-                # update G concepts
-                G_concepts |= set(best_sentence.concepts)
+                # update the selected concepts
+                selected_concepts |= set(best_sentence.concepts)
 
-                # update G size
-                G_size += best_sentence.length
+                # update the total length of the selected sentences
+                selected_length += best_sentence.length
 
-                # update G score
-                G_score += best_score_delta
+                # update the score of the selected sentences
+                selected_score += best_score_delta
 
-            # remove sentence from U
-            U.remove(u)
+            # remove sentence index from indices
+            sentence_indeces.remove(sentence_index)
 
-        # find the singleton with the largest objective value
-        obj_values = []
-        for v in range(len(self.sentences)):
-            obj = sum([self.weights[i] for i in self.sentences[v].concepts])
-            if self.sentences[v].length <= summary_size:
-                bisect.insort(obj_values, (obj, [v]))
-
-        # return singleton if better
-        if obj_values[-1][0] > G_score:
-            print G_score
-            return obj_values[-1]
+        if best_singleton_score > selected_score:
+            return best_singleton_score, set([best_singleton])
 
         # returns the (objective function value, solution) tuple
-        return G_score, G
+        return selected_score, selected_sentence_indeces
 
 
     def solve_ilp_problem(self, 
