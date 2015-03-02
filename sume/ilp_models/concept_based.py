@@ -355,26 +355,26 @@ class ConceptBasedILPSummarizer:
 
         """
 
-        # initialize the set of sentence indeces
-        sentence_indeces = set(range(0,len(self.sentences)))
+        # initialize the set of sentence indices
+        sentence_indices = set(range(0,len(self.sentences)))
 
-        # initialize the set of selected sentence indeces
-        selected_sentence_indeces = set()
+        # initialize the set of selected sentence indices in our greedy solution
+        selected_sentence_indices = set()
 
-        # initialize the concepts contained in G
+        # initialize the concepts contained in our greedy solution
         selected_concepts = set()
 
-        # initialize the size of the sentences in G
+        # initialize the length of our greedy solution
         selected_length = 0
 
-        # initialize the score of G
+        # initialize the score of our greedy solution
         selected_score = 0
 
         # greedily select a sentence
-        while sentence_indeces:
+        while sentence_indices:
 
             ####################################################################
-            # COMPUTE THE GAINS FOR EACH SENTENCE IN U
+            # COMPUTE THE GAINS FOR EACH SENTENCE LEFT
             ####################################################################
 
             best_sentence_index = None
@@ -385,7 +385,7 @@ class ConceptBasedILPSummarizer:
             best_score_delta = 0
 
             # loop through the set of sentences
-            for sentence_index in sentence_indeces:
+            for sentence_index in sentence_indices:
 
                 sentence = self.sentences[sentence_index]
 
@@ -418,7 +418,7 @@ class ConceptBasedILPSummarizer:
             if best_gain > 0:
 
                 # add the sentence index to the selected set
-                selected_sentence_indeces.add(best_sentence_index)
+                selected_sentence_indices.add(best_sentence_index)
 
                 # update the selected concepts
                 selected_concepts |= set(best_sentence.concepts)
@@ -430,13 +430,13 @@ class ConceptBasedILPSummarizer:
                 selected_score += best_score_delta
 
             # remove sentence index from indices
-            sentence_indeces.remove(sentence_index)
+            sentence_indices.remove(sentence_index)
 
         if best_singleton_score > selected_score:
             return best_singleton_score, set([best_singleton])
 
         # returns the (objective function value, solution) tuple
-        return selected_score, selected_sentence_indeces
+        return selected_score, selected_sentence_indices
 
 
     def greedy_approximation3(self, r=1.0, summary_size=100):
@@ -461,7 +461,7 @@ class ConceptBasedILPSummarizer:
         # initialize the score of the best singleton
         best_singleton_score = 0
 
-        # compute indeces of our sentences
+        # compute indices of our sentences
         sentences = range(len(self.sentences))
 
         # compute initial weights and fill the reverse index
