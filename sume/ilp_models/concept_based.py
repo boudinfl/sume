@@ -476,26 +476,26 @@ class ConceptBasedILPSummarizer:
                 best_singleton_score = weight
                 best_singleton = i
 
-        # initialize the greedy solution properties
-        selected_subset, selected_length, selected_score = set(), 0, 0
+        # initialize the selected solution properties
+        sel_subset, sel_concepts, sel_length, sel_score = set(), set(), 0, 0
 
         # greedily select a sentence
         while True:
 
-            ####################################################################
+            ###################################################################
             # RETRIEVE THE BEST SENTENCE
-            ####################################################################
+            ###################################################################
 
             # sort the sentences by gain and reverse length
-            sorted_gain = sorted(((weights[i] / float(self.sentences[i].length),
-                                   -self.sentences[i].length,
-                                   i)
-                                  for i in sentences),
-                                 reverse=True)
-
+            sort_sent = sorted(((weights[i] / float(self.sentences[i].length),
+                                 -self.sentences[i].length,
+                                 i)
+                                for i in sentences),
+                               reverse=True)
+            
             # select the first sentence that fits in the length limit
-            for sentence_gain, rev_length, sentence_index in sorted_gain:
-                if selected_length - rev_length <= summary_size:
+            for sentence_gain, rev_length, sentence_index in sort_sent:
+                if sel_length - rev_length <= summary_size:
                     break
             # if we don't find a sentence, break out of the main while loop
             else:
@@ -505,22 +505,24 @@ class ConceptBasedILPSummarizer:
             if not weights[sentence_index]:
                 break
 
-            # update the selected subset properties
-            selected_subset.add(sentence_index)
-            selected_score += weights[sentence_index]
-            selected_length += self.sentences[sentence_index].length
-
             # update sentence weights with the reverse index
             for concept in set(self.sentences[sentence_index].concepts):
-                for sentence in c2s[concept]:
-                    weights[sentence] -= self.weights[concept]
+                if concept not in sel_concepts:
+                    for sentence in c2s[concept]:
+                        weights[sentence] -= self.weights[concept]
+
+            # update the selected subset properties
+            sel_subset.add(sentence_index)
+            sel_score += weights[sentence_index]
+            sel_length += self.sentences[sentence_index].length
+            sel_concepts.update(self.sentences[sentence_index].concepts)
 
         # check if a singleton has a better score than our greedy solution
-        if best_singleton_score > selected_score:
+        if best_singleton_score > sel_score:
             return best_singleton_score, set([best_singleton])
 
         # returns the (objective function value, solution) tuple
-        return selected_score, selected_subset
+        return sel_score, sel_subset
 
     def solve_ilp_problem(self, 
                           summary_size=100,
