@@ -406,7 +406,8 @@ class ConceptBasedILPSummarizer:
                 # the sentence length
                 sentence_gain = sentence_score_delta / float(sentence.length)
 
-                if sentence_gain == best_gain\
+                if best_sentence is None\
+                   or sentence_gain == best_gain\
                    and sentence.length < best_sentence.length\
                    or sentence_gain > best_gain:
                     best_sentence_index = sentence_index
@@ -505,16 +506,18 @@ class ConceptBasedILPSummarizer:
             if not weights[sentence_index]:
                 break
 
+            # update the selected subset properties
+            sel_subset.add(sentence_index)
+            sel_score += weights[sentence_index]
+            sel_length += self.sentences[sentence_index].length
+
             # update sentence weights with the reverse index
             for concept in set(self.sentences[sentence_index].concepts):
                 if concept not in sel_concepts:
                     for sentence in c2s[concept]:
                         weights[sentence] -= self.weights[concept]
 
-            # update the selected subset properties
-            sel_subset.add(sentence_index)
-            sel_score += weights[sentence_index]
-            sel_length += self.sentences[sentence_index].length
+            # update the last selected subset property
             sel_concepts.update(self.sentences[sentence_index].concepts)
 
         # check if a singleton has a better score than our greedy solution
