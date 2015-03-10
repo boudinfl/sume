@@ -14,7 +14,7 @@ A typical usage of this module is:
 	dir_path = "/tmp/"
 
 	# create the summarizer 
-	s = sume.ilp_models.ConceptBasedILPSummarizer()
+	s = sume.ilp_models.ConceptBasedILPSummarizer(dir_path)
 
 	# load documents
 	s.read_documents()

@@ -40,6 +40,7 @@ class ConceptBasedILPSummarizer:
         self.file_extension = file_extension
         self.sentences = []
         self.weights = {}
+        self.c2s = defaultdict(set)
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
 
@@ -439,6 +440,10 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return selected_score, selected_sentence_indices
 
+    def compute_c2s(self):
+        for i, sentence in enumerate(self.sentences):
+            for concept in sentence.concepts:
+                self.c2s[concept].add(i)
 
     def greedy_approximation3(self, r=1.0, summary_size=100):
         """Greedy approximation of the ILP model.
@@ -453,11 +458,12 @@ class ConceptBasedILPSummarizer:
               objective function and the set of selected sentences as a tuple.
 
         """
+        if not self.c2s:
+            raise AssertionError(
+                "The solver's reverse index c2s is empty. "
+                "Did you execute solver.compute_c2s()?")
         # initialize weights
         weights = {}
-
-        # initialize concept to sentence reverse index
-        c2s = defaultdict(set)
 
         # initialize the score of the best singleton
         best_singleton_score = 0
@@ -467,14 +473,11 @@ class ConceptBasedILPSummarizer:
 
         # compute initial weights and fill the reverse index
         # while keeping track of the best singleton solution
-        for i in sentences:
-            weight = 0
-            for concept in set(self.sentences[i].concepts):
-                c2s[concept].add(i)
-                weight += self.weights[concept]
-            weights[i] = weight
-            if weight > best_singleton_score:
-                best_singleton_score = weight
+        for i, sentence in enumerate(self.sentences):
+            weights[i] = sum(self.weights[c] for c in set(sentence.concepts))
+            if sentence.length <= summary_size\
+               and weights[i] > best_singleton_score:
+                best_singleton_score = weights[i]
                 best_singleton = i
 
         # initialize the selected solution properties
@@ -509,12 +512,12 @@ class ConceptBasedILPSummarizer:
             # update the selected subset properties
             sel_subset.add(sentence_index)
             sel_score += weights[sentence_index]
-            sel_length += self.sentences[sentence_index].length
+            sel_length -= rev_length
 
             # update sentence weights with the reverse index
             for concept in set(self.sentences[sentence_index].concepts):
                 if concept not in sel_concepts:
-                    for sentence in c2s[concept]:
+                    for sentence in self.c2s[concept]:
                         weights[sentence] -= self.weights[concept]
 
             # update the last selected subset property
