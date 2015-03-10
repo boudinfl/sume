@@ -1,5 +1,7 @@
 # sume
 
+## Description
+
 Implementation of the concept-based ILP model for summarization. The original 
 algorithm was published and described in:
 
@@ -37,3 +39,9 @@ A typical usage of this module is:
 
 	# outputs the summary
 	print '\n'.join([s.sentences[j].untokenized_form for j in subset])
+
+
+## Contributors
+
+* Florian Boudin
+* Hugo Mougard
