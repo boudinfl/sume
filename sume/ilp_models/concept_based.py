@@ -552,12 +552,17 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return sel_score, sel_subset
 
-    def tabu_search(self, summary_size=100):
-        """Greedy approximation of the ILP model.
+    def tabu_search(self, summary_size=100, memory_size=5, iterations=30):
+        """Greedy approximation of the ILP model with a tabu search
+          meta-heuritstic.
 
         Args:
             summary_size (int): the maximum size in words of the summary,
               defaults to 100.
+            memory_size (int): the maximum size of the pool of sentences
+              to ban at a given time, defaults at 5.
+            iterations (int): the number of iterations to run, defaults at
+              30.
 
         Returns:
             (value, set) tuple (int, list): the value of the approximated
@@ -590,8 +595,8 @@ class ConceptBasedILPSummarizer:
 
         best_subset, best_score = None, 0
         state = State()
-        for i in range(30):
-            queue = deque([], 5)
+        for i in xrange(iterations):
+            queue = deque([], memory_size)
             # greedily select sentences
             state = self.select_sentences(summary_size,
                                           weights,
@@ -612,6 +617,23 @@ class ConceptBasedILPSummarizer:
         return best_score, best_subset
 
     def select_sentences(self, summary_size, weights, state, tabu_set):
+        """Greedy sentence selector.
+
+        Args:
+            summary_size (int): the maximum size in words of the summary,
+              defaults to 100.
+            weights (dictionary): the sentence weights dictionary. This
+              dictionnary is updated during this method call (in-place).
+            state (State): the state of the tabu search from which to start
+              selecting sentences.
+            tabu_set (iterable): set of sentences that are tabu: this
+              selector will not consider them.
+
+        Returns:
+            state (State): the new state of the search. Also note that
+              weights is modified in-place.
+
+        """
         # greedily select a sentence while respecting the tabu
         while True:
 
@@ -653,6 +675,21 @@ class ConceptBasedILPSummarizer:
         return state
 
     def unselect_sentences(self, weights, state, to_remove):
+        """Sentence ``un-selector'' (reverse operation of the
+          select_sentences method).
+
+        Args:
+            weights (dictionary): the sentence weights dictionary. This
+              dictionnary is updated during this method call (in-place).
+            state (State): the state of the tabu search from which to start
+              un-selecting sentences.
+            to_remove (iterable): set of sentences to unselect.
+
+        Returns:
+            state (State): the new state of the search. Also note that
+              weights is modified in-place.
+
+        """
         # remove the sentence indices from the solution subset
         state.subset -= to_remove
         for sentence_index in to_remove:
