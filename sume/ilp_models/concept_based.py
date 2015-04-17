@@ -589,17 +589,20 @@ class ConceptBasedILPSummarizer:
                 best_singleton = i
 
         best_subset, best_score = None, 0
+        state = State()
         for i in range(30):
-            queue = deque([], 20)
+            queue = deque([], 5)
             # greedily select sentences
             state = self.select_sentences(summary_size,
-                                          weights.copy(),
-                                          State(),
+                                          weights,
+                                          state,
                                           queue)
             if state.score > best_score:
                 best_subset = state.subset
                 best_score = state.score
-            queue.extend(random.sample(state.subset, 1))
+            to_tabu = set(random.sample(state.subset, 2))
+            state = self.unselect_sentences(weights, state, to_tabu)
+            queue.extend(to_tabu)
 
         # check if a singleton has a better score than our greedy solution
         if best_singleton_score > best_score:
@@ -647,6 +650,21 @@ class ConceptBasedILPSummarizer:
                 if state.concepts[concept] == 1:
                     for sentence in self.c2s[concept]:
                         weights[sentence] -= self.weights[concept]
+        return state
+
+    def unselect_sentences(self, weights, state, to_remove):
+        # remove the sentence indices from the solution subset
+        state.subset -= to_remove
+        for sentence_index in to_remove:
+            # update state
+            state.concepts.subtract(self.concept_sets[sentence_index])
+            state.length -= self.sentences[sentence_index].length
+            # update sentence weights with the reverse index
+            for concept in set(self.concept_sets[sentence_index]):
+                if not state.concepts[concept]:
+                    for sentence in self.c2s[concept]:
+                        weights[sentence] += self.weights[concept]
+            state.score -= weights[sentence_index]
         return state
 
     def solve_ilp_problem(self,
