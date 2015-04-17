@@ -10,16 +10,27 @@
 from sume.base import Sentence
 from sume.base import untokenize
 
-from collections import defaultdict
+from collections import Counter, defaultdict, deque
 
 import os
 import re
 import codecs
 import bisect
+import random
 import sys
 
 import nltk
 import pulp
+
+
+class State:
+    """Internal class used as a struct to keep track of
+    the search state in the tabu_search method."""
+    def __init__(self):
+        self.subset = set()
+        self.concepts = Counter()
+        self.length = 0
+        self.score = 0
 
 
 class ConceptBasedILPSummarizer:
@@ -42,6 +53,7 @@ class ConceptBasedILPSummarizer:
         self.sentences = []
         self.weights = {}
         self.c2s = defaultdict(set)
+        self.concept_sets = defaultdict(frozenset)
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
 
@@ -233,6 +245,16 @@ class ConceptBasedILPSummarizer:
             # prune concepts
             self.sentences[i].concepts = [c for c in concepts
                                           if c in self.weights]
+
+    def compute_c2s(self):
+        for i, sentence in enumerate(self.sentences):
+            for concept in sentence.concepts:
+                self.c2s[concept].add(i)
+
+    def compute_concept_sets(self):
+        for i, sentence in enumerate(self.sentences):
+            for concept in sentence.concepts:
+                self.concept_sets[i] |= {concept}
 
     def greedy_approximation(self, r=1.0, summary_size=100):
         """Greedy approximation of the ILP model.
@@ -446,11 +468,6 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return selected_score, selected_sentence_indices
 
-    def compute_c2s(self):
-        for i, sentence in enumerate(self.sentences):
-            for concept in sentence.concepts:
-                self.c2s[concept].add(i)
-
     def greedy_approximation3(self, summary_size=100):
         """Greedy approximation of the ILP model.
 
@@ -534,6 +551,103 @@ class ConceptBasedILPSummarizer:
 
         # returns the (objective function value, solution) tuple
         return sel_score, sel_subset
+
+    def tabu_search(self, summary_size=100):
+        """Greedy approximation of the ILP model.
+
+        Args:
+            summary_size (int): the maximum size in words of the summary,
+              defaults to 100.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated
+              objective function and the set of selected sentences as a tuple.
+
+        """
+        if not self.c2s:
+            raise AssertionError(
+                "The solver's reverse index c2s is empty. "
+                "Did you execute solver.compute_c2s()?")
+        if not self.concept_sets:
+            raise AssertionError(
+                "The solver's concept sets dictionary is empty. "
+                "Did you execute solver.compute_concept_sets()?")
+
+        # initialize weights
+        weights = {}
+
+        # initialize the score of the best singleton
+        best_singleton_score = 0
+
+        # compute initial weights and fill the reverse index
+        # while keeping track of the best singleton solution
+        for i, sentence in enumerate(self.sentences):
+            weights[i] = sum(self.weights[c] for c in set(sentence.concepts))
+            if sentence.length <= summary_size\
+               and weights[i] > best_singleton_score:
+                best_singleton_score = weights[i]
+                best_singleton = i
+
+        best_subset, best_score = None, 0
+        for i in range(30):
+            queue = deque([], 20)
+            # greedily select sentences
+            state = self.select_sentences(summary_size,
+                                          weights.copy(),
+                                          State(),
+                                          queue)
+            if state.score > best_score:
+                best_subset = state.subset
+                best_score = state.score
+            queue.extend(random.sample(state.subset, 1))
+
+        # check if a singleton has a better score than our greedy solution
+        if best_singleton_score > best_score:
+            return best_singleton_score, set([best_singleton])
+
+        # returns the (objective function value, solution) tuple
+        return best_score, best_subset
+
+    def select_sentences(self, summary_size, weights, state, tabu_set):
+        # greedily select a sentence while respecting the tabu
+        while True:
+
+            ###################################################################
+            # RETRIEVE THE BEST SENTENCE
+            ###################################################################
+
+            # sort the sentences by gain and reverse length
+            sort_sent = sorted(((weights[i] / float(self.sentences[i].length),
+                                 -self.sentences[i].length,
+                                 i)
+                                for i in range(len(self.sentences))),
+                               reverse=True)
+
+            # select the first sentence that fits in the length limit
+            for sentence_gain, rev_length, sentence_index in sort_sent:
+                if sentence_index not in tabu_set \
+                   and state.length - rev_length <= summary_size:
+                    break
+            # if we don't find a sentence, break out of the main while loop
+            else:
+                break
+
+            # if the gain is null, break out of the main while loop
+            if not weights[sentence_index]:
+                break
+
+            # update state
+            state.subset |= {sentence_index}
+            state.concepts.update(self.concept_sets[sentence_index])
+            state.length -= rev_length
+            state.score += weights[sentence_index]
+
+            # update sentence weights with the reverse index
+            for concept in set(self.concept_sets[sentence_index]):
+                if state.concepts[concept] == 1:
+                    for sentence in self.c2s[concept]:
+                        weights[sentence] -= self.weights[concept]
+        return state
 
     def solve_ilp_problem(self,
                           summary_size=100,
