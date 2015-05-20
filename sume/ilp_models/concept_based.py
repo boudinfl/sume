@@ -10,29 +10,41 @@
 from sume.base import Sentence
 from sume.base import untokenize
 
-from collections import defaultdict
+from collections import Counter, defaultdict, deque
 
 import os
 import re
 import codecs
 import bisect
+import random
 import sys
 
 import nltk
 import pulp
 
-class ConceptBasedILPSummarizer:
-    """Concept-based ILP summarization model. 
 
-    Implementation of (Gillick & Favre, 2009) ILP model for summarization. 
+class State:
+    """Internal class used as a struct to keep track of
+    the search state in the tabu_search method."""
+    def __init__(self):
+        self.subset = set()
+        self.concepts = Counter()
+        self.length = 0
+        self.score = 0
+
+
+class ConceptBasedILPSummarizer:
+    """Concept-based ILP summarization model.
+
+    Implementation of (Gillick & Favre, 2009) ILP model for summarization.
 
     """
     def __init__(self, input_directory, file_extension="sentences"):
-        """ 
+        """
         Args:
             input_directory (str): the directory from which text documents to
               be summarized are loaded.
-            file_extension (str): the file extension for input documents, 
+            file_extension (str): the file extension for input documents,
               defaults to sentences.
 
         """
@@ -41,6 +53,7 @@ class ConceptBasedILPSummarizer:
         self.sentences = []
         self.weights = {}
         self.c2s = defaultdict(set)
+        self.concept_sets = defaultdict(frozenset)
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
 
@@ -56,7 +69,9 @@ class ConceptBasedILPSummarizer:
             if infile[-len(self.file_extension):] != self.file_extension:
                 continue
 
-            with codecs.open(self.input_directory+'/'+infile,'r','utf-8') as f:
+            with codecs.open(self.input_directory + '/' + infile,
+                             'r',
+                             'utf-8') as f:
 
                 # load the sentences
                 lines = f.readlines()
@@ -69,10 +84,11 @@ class ConceptBasedILPSummarizer:
 
                     # add the sentence
                     if len(tokens) > 0:
-                        self.sentences.append(Sentence(tokens, infile, i))
-                        self.sentences[-1].untokenized_form = untokenize(tokens)
-                        self.sentences[-1].length = \
-                            len(self.sentences[-1].untokenized_form.split(' '))
+                        sentence = Sentence(tokens, infile, i)
+                        untokenized_form = untokenize(tokens)
+                        sentence.untokenized_form = untokenized_form
+                        sentence.length = len(untokenized_form.split(' '))
+                        self.sentences.append(sentence)
 
     def extract_ngrams(self, n=2):
         """Extract the ngrams of words from the input sentences.
@@ -112,7 +128,7 @@ class ConceptBasedILPSummarizer:
                 self.sentences[i].concepts.append(' '.join(ngram))
 
     def compute_document_frequency(self):
-        """Compute the document frequency of each concept. 
+        """Compute the document frequency of each concept.
 
         """
         for i in range(len(self.sentences)):
@@ -121,7 +137,7 @@ class ConceptBasedILPSummarizer:
             for concept in self.sentences[i].concepts:
 
                 # add the document id to the concept weight container
-                if not self.weights.has_key(concept):
+                if concept not in self.weights:
                     self.weights[concept] = set([])
                 self.weights[concept].add(self.sentences[i].doc_id)
 
@@ -129,7 +145,7 @@ class ConceptBasedILPSummarizer:
         for concept in self.weights:
             self.weights[concept] = len(self.weights[concept])
 
-    def prune_sentences(self, 
+    def prune_sentences(self,
                         mininum_sentence_length=5,
                         remove_citations=True,
                         remove_redundancy=True):
@@ -139,9 +155,9 @@ class ConceptBasedILPSummarizer:
         sentences and citations from entering the summary.
 
         Args:
-            mininum_sentence_length (int): the minimum number of words for a 
+            mininum_sentence_length (int): the minimum number of words for a
               sentence to enter the summary, defaults to 5
-            remove_citations (bool): indicates that citations are pruned, 
+            remove_citations (bool): indicates that citations are pruned,
               defaults to True
             remove_redundancy (bool): indicates that redundant sentences are
               pruned, defaults to True
@@ -157,20 +173,21 @@ class ConceptBasedILPSummarizer:
                 continue
 
             # prune citations
+            first_token, last_token = sentence.tokens[0], sentence.tokens[-1]
             if remove_citations and \
-              (sentence.tokens[0]==u"``" or sentence.tokens[0]==u'"') and \
-              (sentence.tokens[-1]==u"''" or sentence.tokens[0]==u'"'):
+               (first_token == u"``" or first_token == u'"') and \
+               (last_token == u"''" or first_token == u'"'):
                 continue
 
             # prune ___ said citations
             # if remove_citations and \
             #     (sentence.tokens[0]==u"``" or sentence.tokens[0]==u'"') and \
-            #     re.search('(?i)(''|") \w{,30} (said|reported|told)\.$', 
+            #     re.search('(?i)(''|") \w{,30} (said|reported|told)\.$',
             #               sentence.untokenized_form):
             #     continue
 
             # prune identical and almost identical sentences
-            if remove_redundancy: 
+            if remove_redundancy:
                 is_redundant = False
                 for prev_sentence in pruned_sentences:
                     if sentence.tokens == prev_sentence.tokens:
@@ -189,9 +206,10 @@ class ConceptBasedILPSummarizer:
         """Prune the concepts for efficient summarization.
 
         Args:
-            method (str): the method for pruning concepts that can be whether by
-              using a minimal value for concept scores (threshold) or using the
-              top-N highest scoring concepts (top-n), defaults to threshold.
+            method (str): the method for pruning concepts that can be whether
+              by using a minimal value for concept scores (threshold) or using
+              the top-N highest scoring concepts (top-n), defaults to
+              threshold.
             value (int): the value used for pruning concepts, defaults to 3.
 
         """
@@ -208,14 +226,14 @@ class ConceptBasedILPSummarizer:
         elif method == "top-n":
 
             # sort concepts by scores
-            sorted_concepts = sorted( self.weights, 
-                                      key=lambda x : self.weights[x], 
-                                      reverse=True )
+            sorted_concepts = sorted(self.weights,
+                                     key=lambda x: self.weights[x],
+                                     reverse=True)
 
             # iterates over the concept weights
             concepts = self.weights.keys()
             for concept in concepts:
-                if not concept in sorted_concepts[:value]:
+                if concept not in sorted_concepts[:value]:
                     del self.weights[concept]
 
         # iterates over the sentences
@@ -225,19 +243,29 @@ class ConceptBasedILPSummarizer:
             concepts = self.sentences[i].concepts
 
             # prune concepts
-            self.sentences[i].concepts = [c for c in concepts \
-                                          if self.weights.has_key(c)]
+            self.sentences[i].concepts = [c for c in concepts
+                                          if c in self.weights]
+
+    def compute_c2s(self):
+        for i, sentence in enumerate(self.sentences):
+            for concept in sentence.concepts:
+                self.c2s[concept].add(i)
+
+    def compute_concept_sets(self):
+        for i, sentence in enumerate(self.sentences):
+            for concept in sentence.concepts:
+                self.concept_sets[i] |= {concept}
 
     def greedy_approximation(self, r=1.0, summary_size=100):
         """Greedy approximation of the ILP model.
 
         Args:
             r (int): the scaling factor, defaults to 1.
-            summary_size (int): the maximum size in words of the summary, 
+            summary_size (int): the maximum size in words of the summary,
               defaults to 100.
 
         Returns:
-            (value, set) tuple (int, list): the value of the approximated 
+            (value, set) tuple (int, list): the value of the approximated
               objective function and the set of selected sentences as a tuple.
 
         """
@@ -257,9 +285,9 @@ class ConceptBasedILPSummarizer:
         # greedily select a sentence
         while len(U) > 0:
 
-            ####################################################################
+            ###################################################################
             # COMPUTE THE GAINS FOR EACH SENTENCE IN U
-            ####################################################################
+            ###################################################################
 
             # compute the score of G
             f_G = sum([self.weights[i] for i in G_concepts])
@@ -304,7 +332,7 @@ class ConceptBasedILPSummarizer:
             size = G_size + self.sentences[k].length
 
             # compute the score of G union k
-            f_G_k = sum([self.weights[i] for i in \
+            f_G_k = sum([self.weights[i] for i in
                          G_concepts.union(self.sentences[k].concepts)])
 
             # if adding the sentence is permitted
@@ -320,7 +348,7 @@ class ConceptBasedILPSummarizer:
                 G_concepts = set(G_concepts)
 
                 # modify the size of G
-                G_size = size 
+                G_size = size
 
             # remove sentence k from U
             U.remove(k)
@@ -342,24 +370,24 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return f_G, G
 
-    def greedy_approximation2(self, r=1.0, summary_size=100):
+    def greedy_approximation2(self, summary_size=100):
         """Greedy approximation of the ILP model.
 
         Args:
-            r (int): the scaling factor, defaults to 1.
-            summary_size (int): the maximum size in words of the summary, 
+            summary_size (int): the maximum size in words of the summary,
               defaults to 100.
 
         Returns:
-            (value, set) tuple (int, list): the value of the approximated 
+            (value, set) tuple (int, list): the value of the approximated
               objective function and the set of selected sentences as a tuple.
 
         """
 
         # initialize the set of sentence indices
-        sentence_indices = set(range(0,len(self.sentences)))
+        sentence_indices = set(range(len(self.sentences)))
 
-        # initialize the set of selected sentence indices in our greedy solution
+        # initialize the set of selected sentence indices in our greedy
+        # solution
         selected_sentence_indices = set()
 
         # initialize the concepts contained in our greedy solution
@@ -374,9 +402,9 @@ class ConceptBasedILPSummarizer:
         # greedily select a sentence
         while sentence_indices:
 
-            ####################################################################
+            ###################################################################
             # COMPUTE THE GAINS FOR EACH SENTENCE LEFT
-            ####################################################################
+            ###################################################################
 
             best_sentence_index = None
             best_sentence = None
@@ -440,16 +468,10 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return selected_score, selected_sentence_indices
 
-    def compute_c2s(self):
-        for i, sentence in enumerate(self.sentences):
-            for concept in sentence.concepts:
-                self.c2s[concept].add(i)
-
-    def greedy_approximation3(self, r=1.0, summary_size=100):
+    def greedy_approximation3(self, summary_size=100):
         """Greedy approximation of the ILP model.
 
         Args:
-            r (int): the scaling factor, defaults to 1.
             summary_size (int): the maximum size in words of the summary,
               defaults to 100.
 
@@ -496,7 +518,7 @@ class ConceptBasedILPSummarizer:
                                  i)
                                 for i in sentences),
                                reverse=True)
-            
+
             # select the first sentence that fits in the length limit
             for sentence_gain, rev_length, sentence_index in sort_sent:
                 if sel_length - rev_length <= summary_size:
@@ -530,14 +552,166 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return sel_score, sel_subset
 
-    def solve_ilp_problem(self, 
+    def tabu_search(self, summary_size=100, memory_size=5, iterations=30):
+        """Greedy approximation of the ILP model with a tabu search
+          meta-heuritstic.
+
+        Args:
+            summary_size (int): the maximum size in words of the summary,
+              defaults to 100.
+            memory_size (int): the maximum size of the pool of sentences
+              to ban at a given time, defaults at 5.
+            iterations (int): the number of iterations to run, defaults at
+              30.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated
+              objective function and the set of selected sentences as a tuple.
+
+        """
+        if not self.c2s:
+            raise AssertionError(
+                "The solver's reverse index c2s is empty. "
+                "Did you execute solver.compute_c2s()?")
+        if not self.concept_sets:
+            raise AssertionError(
+                "The solver's concept sets dictionary is empty. "
+                "Did you execute solver.compute_concept_sets()?")
+
+        # initialize weights
+        weights = {}
+
+        # initialize the score of the best singleton
+        best_singleton_score = 0
+
+        # compute initial weights and fill the reverse index
+        # while keeping track of the best singleton solution
+        for i, sentence in enumerate(self.sentences):
+            weights[i] = sum(self.weights[c] for c in set(sentence.concepts))
+            if sentence.length <= summary_size\
+               and weights[i] > best_singleton_score:
+                best_singleton_score = weights[i]
+                best_singleton = i
+
+        best_subset, best_score = None, 0
+        state = State()
+        for i in xrange(iterations):
+            queue = deque([], memory_size)
+            # greedily select sentences
+            state = self.select_sentences(summary_size,
+                                          weights,
+                                          state,
+                                          queue)
+            if state.score > best_score:
+                best_subset = state.subset
+                best_score = state.score
+            to_tabu = set(random.sample(state.subset, 2))
+            state = self.unselect_sentences(weights, state, to_tabu)
+            queue.extend(to_tabu)
+
+        # check if a singleton has a better score than our greedy solution
+        if best_singleton_score > best_score:
+            return best_singleton_score, set([best_singleton])
+
+        # returns the (objective function value, solution) tuple
+        return best_score, best_subset
+
+    def select_sentences(self, summary_size, weights, state, tabu_set):
+        """Greedy sentence selector.
+
+        Args:
+            summary_size (int): the maximum size in words of the summary,
+              defaults to 100.
+            weights (dictionary): the sentence weights dictionary. This
+              dictionnary is updated during this method call (in-place).
+            state (State): the state of the tabu search from which to start
+              selecting sentences.
+            tabu_set (iterable): set of sentences that are tabu: this
+              selector will not consider them.
+
+        Returns:
+            state (State): the new state of the search. Also note that
+              weights is modified in-place.
+
+        """
+        # greedily select a sentence while respecting the tabu
+        while True:
+
+            ###################################################################
+            # RETRIEVE THE BEST SENTENCE
+            ###################################################################
+
+            # sort the sentences by gain and reverse length
+            sort_sent = sorted(((weights[i] / float(self.sentences[i].length),
+                                 -self.sentences[i].length,
+                                 i)
+                                for i in range(len(self.sentences))),
+                               reverse=True)
+
+            # select the first sentence that fits in the length limit
+            for sentence_gain, rev_length, sentence_index in sort_sent:
+                if sentence_index not in tabu_set \
+                   and state.length - rev_length <= summary_size:
+                    break
+            # if we don't find a sentence, break out of the main while loop
+            else:
+                break
+
+            # if the gain is null, break out of the main while loop
+            if not weights[sentence_index]:
+                break
+
+            # update state
+            state.subset |= {sentence_index}
+            state.concepts.update(self.concept_sets[sentence_index])
+            state.length -= rev_length
+            state.score += weights[sentence_index]
+
+            # update sentence weights with the reverse index
+            for concept in set(self.concept_sets[sentence_index]):
+                if state.concepts[concept] == 1:
+                    for sentence in self.c2s[concept]:
+                        weights[sentence] -= self.weights[concept]
+        return state
+
+    def unselect_sentences(self, weights, state, to_remove):
+        """Sentence ``un-selector'' (reverse operation of the
+          select_sentences method).
+
+        Args:
+            weights (dictionary): the sentence weights dictionary. This
+              dictionnary is updated during this method call (in-place).
+            state (State): the state of the tabu search from which to start
+              un-selecting sentences.
+            to_remove (iterable): set of sentences to unselect.
+
+        Returns:
+            state (State): the new state of the search. Also note that
+              weights is modified in-place.
+
+        """
+        # remove the sentence indices from the solution subset
+        state.subset -= to_remove
+        for sentence_index in to_remove:
+            # update state
+            state.concepts.subtract(self.concept_sets[sentence_index])
+            state.length -= self.sentences[sentence_index].length
+            # update sentence weights with the reverse index
+            for concept in set(self.concept_sets[sentence_index]):
+                if not state.concepts[concept]:
+                    for sentence in self.c2s[concept]:
+                        weights[sentence] += self.weights[concept]
+            state.score -= weights[sentence_index]
+        return state
+
+    def solve_ilp_problem(self,
                           summary_size=100,
                           solver='glpk',
                           excluded_solutions=[]):
         """Solve the ILP formulation of the concept-based model.
 
         Args:
-            summary_size (int): the maximum size in words of the summary, 
+            summary_size (int): the maximum size in words of the summary,
               defaults to 100.
             solver (str): the solver used, defaults to glpk.
             excluded_solutions (list of list): a list of subsets of sentences
@@ -555,31 +729,31 @@ class ConceptBasedILPSummarizer:
         C = len(concepts)
         S = len(self.sentences)
 
-        #### HACK Sort keys
+        # HACK Sort keys
         concepts = sorted(self.weights, key=self.weights.get, reverse=True)
 
-        # formulation of the ILP problem 
+        # formulation of the ILP problem
         prob = pulp.LpProblem(self.input_directory, pulp.LpMaximize)
 
         # initialize the concepts binary variables
-        c = pulp.LpVariable.dicts(name='c', 
-                                  indexs=range(C), 
-                                  lowBound=0, 
+        c = pulp.LpVariable.dicts(name='c',
+                                  indexs=range(C),
+                                  lowBound=0,
                                   upBound=1,
                                   cat='Integer')
 
         # initialize the sentences binary variables
-        s = pulp.LpVariable.dicts(name='s', 
-                                  indexs=range(S), 
-                                  lowBound=0, 
+        s = pulp.LpVariable.dicts(name='s',
+                                  indexs=range(S),
+                                  lowBound=0,
                                   upBound=1,
                                   cat='Integer')
 
         # OBJECTIVE FUNCTION
-        prob += sum([ w[concepts[i]] * c[i] for i in range(C) ])
+        prob += sum(w[concepts[i]] * c[i] for i in range(C))
 
         # CONSTRAINT FOR SUMMARY SIZE
-        prob += sum([s[j] * self.sentences[j].length for j in range(S)]) <= L
+        prob += sum(s[j] * self.sentences[j].length for j in range(S)) <= L
 
         # INTEGRITY CONSTRAINTS
         for i in range(C):
@@ -588,8 +762,8 @@ class ConceptBasedILPSummarizer:
                     prob += s[j] <= c[i]
 
         for i in range(C):
-            prob += sum( [s[j] for j in range(S) \
-                        if concepts[i] in self.sentences[j].concepts] ) >= c[i]
+            prob += sum(s[j] for j in range(S)
+                        if concepts[i] in self.sentences[j].concepts) >= c[i]
 
         # CONSTRAINTS FOR FINDING OPTIMAL SOLUTIONS
         for sentence_set in excluded_solutions:
@@ -597,11 +771,11 @@ class ConceptBasedILPSummarizer:
 
         # solving the ilp problem
         if solver == 'gurobi':
-            prob.solve(pulp.GUROBI(msg = 0))
+            prob.solve(pulp.GUROBI(msg=0))
         elif solver == 'glpk':
-            prob.solve(pulp.GLPK(msg = 0))
+            prob.solve(pulp.GLPK(msg=0))
         elif solver == 'cplex':
-            prob.solve(pulp.CPLEX(msg = 0))
+            prob.solve(pulp.CPLEX(msg=0))
             # prob.writeLP('test.lp')
         else:
             sys.exit('no solver specified')
