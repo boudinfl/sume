@@ -603,7 +603,7 @@ class ConceptBasedILPSummarizer:
                                           state,
                                           queue)
             if state.score > best_score:
-                best_subset = state.subset
+                best_subset = state.subset.copy()
                 best_score = state.score
             to_tabu = set(random.sample(state.subset, 2))
             state = self.unselect_sentences(weights, state, to_tabu)
