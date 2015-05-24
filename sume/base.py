@@ -9,6 +9,24 @@
 
 import re
 
+class State:
+    """ State class
+
+    Internal class used as a structure to keep track of the search state in 
+    the tabu_search method.
+
+    Args:
+        subset (set): a subset of sentences
+        concepts (Counter): a set of concepts for the subset
+        length (int): the length in words
+        score (int): the score for the subset
+    """
+    def __init__(self):
+        self.subset = set()
+        self.concepts = Counter()
+        self.length = 0
+        self.score = 0
+
 class Sentence:
     """The sentence data structure.
 
@@ -37,7 +55,6 @@ class Sentence:
 
         self.length = 0
         """ length of the untokenized sentence. """
-
 
 def untokenize(tokens):
     """Untokenizing a list of tokens. 

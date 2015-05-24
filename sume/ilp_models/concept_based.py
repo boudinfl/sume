@@ -2,13 +2,13 @@
 
 """ Concept-based ILP summarization methods.
 
-    author: florian boudin (florian.boudin@univ-nantes.fr)
-    version: 0.1
-    date: Nov. 2014
+    authors: Florian Boudin (florian.boudin@univ-nantes.fr)
+             Hugo Mougard (hugo.mougard@univ-nantes.fr)
+    version: 0.2
+    date: May 2015
 """
 
-from sume.base import Sentence
-from sume.base import untokenize
+from sume.base import Sentence, State, untokenize
 
 from collections import Counter, defaultdict, deque
 
@@ -22,22 +22,10 @@ import sys
 import nltk
 import pulp
 
-
-class State:
-    """Internal class used as a struct to keep track of
-    the search state in the tabu_search method."""
-    def __init__(self):
-        self.subset = set()
-        self.concepts = Counter()
-        self.length = 0
-        self.score = 0
-
-
 class ConceptBasedILPSummarizer:
     """Concept-based ILP summarization model.
 
     Implementation of (Gillick & Favre, 2009) ILP model for summarization.
-
     """
     def __init__(self, input_directory, file_extension="sentences"):
         """
@@ -247,130 +235,20 @@ class ConceptBasedILPSummarizer:
                                           if c in self.weights]
 
     def compute_c2s(self):
+        """Compute the inverted concept to sentences dictionary. """
+
         for i, sentence in enumerate(self.sentences):
             for concept in sentence.concepts:
                 self.c2s[concept].add(i)
 
     def compute_concept_sets(self):
+        """Compute the concept sets for each sentence."""
+
         for i, sentence in enumerate(self.sentences):
             for concept in sentence.concepts:
                 self.concept_sets[i] |= {concept}
 
-    def greedy_approximation(self, r=1.0, summary_size=100):
-        """Greedy approximation of the ILP model.
-
-        Args:
-            r (int): the scaling factor, defaults to 1.
-            summary_size (int): the maximum size in words of the summary,
-              defaults to 100.
-
-        Returns:
-            (value, set) tuple (int, list): the value of the approximated
-              objective function and the set of selected sentences as a tuple.
-
-        """
-
-        # initialize the set of selected sentences
-        G = set([])
-
-        # initialize the set of sentences
-        U = set(range(len(self.sentences)))
-
-        # initialize the concepts contained in G
-        G_concepts = set([])
-
-        # initialize the size of the sentences in G
-        G_size = 0
-
-        # greedily select a sentence
-        while len(U) > 0:
-
-            ###################################################################
-            # COMPUTE THE GAINS FOR EACH SENTENCE IN U
-            ###################################################################
-
-            # compute the score of G
-            f_G = sum([self.weights[i] for i in G_concepts])
-
-            # convert U in a list
-            U_list = list(U)
-
-            # initialize the gain container
-            gains = []
-
-            # loop through the set of sentences
-            for u in U_list:
-
-                # do not consider sentences that are too long
-                if G_size + self.sentences[u].length > summary_size:
-                    gains.append(0)
-                    continue
-
-                # get the concepts from G union u
-                G_u = G_concepts.union(self.sentences[u].concepts)
-
-                # compute the score of G union u
-                f_G_u = sum([self.weights[i] for i in G_u])
-
-                # compute the gain for u
-                gain = (f_G_u-f_G) / float(self.sentences[u].length)**r
-
-                # add the gain for u in the container
-                gains.append(gain)
-
-            # find the maximum gain
-            max_gain = max(gains)
-
-            # find the indexes for the maximum gain
-            ks = [i for i in xrange(len(U_list)) if gains[i] == max_gain]
-
-            # select the shortest sentence
-            sizes = [self.sentences[i].length for i in ks]
-            k = U_list[ks[sizes.index(min(sizes))]]
-
-            # compute the new size
-            size = G_size + self.sentences[k].length
-
-            # compute the score of G union k
-            f_G_k = sum([self.weights[i] for i in
-                         G_concepts.union(self.sentences[k].concepts)])
-
-            # if adding the sentence is permitted
-            if size <= summary_size and f_G_k-f_G >= 0:
-
-                # add the sentence to G
-                G.add(k)
-
-                # recompute the concepts for G
-                G_concepts = []
-                for i in G:
-                    G_concepts.extend(self.sentences[i].concepts)
-                G_concepts = set(G_concepts)
-
-                # modify the size of G
-                G_size = size
-
-            # remove sentence k from U
-            U.remove(k)
-
-        # compute the objective function for G
-        f_G = sum([self.weights[i] for i in G_concepts])
-
-        # find the singleton with the largest objective value
-        obj_values = []
-        for v in range(len(self.sentences)):
-            obj = sum([self.weights[i] for i in self.sentences[v].concepts])
-            if self.sentences[v].length <= summary_size:
-                bisect.insort(obj_values, (obj, [v]))
-
-        # return singleton if better
-        if obj_values[-1][0] > f_G:
-            return obj_values[-1]
-
-        # returns the (objective function value, solution) tuple
-        return f_G, G
-
-    def greedy_approximation2(self, summary_size=100):
+    def greedy_approximation(self, summary_size=100):
         """Greedy approximation of the ILP model.
 
         Args:
@@ -382,108 +260,10 @@ class ConceptBasedILPSummarizer:
               objective function and the set of selected sentences as a tuple.
 
         """
-
-        # initialize the set of sentence indices
-        sentence_indices = set(range(len(self.sentences)))
-
-        # initialize the set of selected sentence indices in our greedy
-        # solution
-        selected_sentence_indices = set()
-
-        # initialize the concepts contained in our greedy solution
-        selected_concepts = set()
-
-        # initialize the length of our greedy solution
-        selected_length = 0
-
-        # initialize the score of our greedy solution
-        selected_score = 0
-
-        # greedily select a sentence
-        while sentence_indices:
-
-            ###################################################################
-            # COMPUTE THE GAINS FOR EACH SENTENCE LEFT
-            ###################################################################
-
-            best_sentence_index = None
-            best_sentence = None
-            best_singleton = None
-            best_singleton_score = 0
-            best_gain = 0
-            best_score_delta = 0
-
-            # loop through the set of sentences
-            for sentence_index in sentence_indices:
-
-                sentence = self.sentences[sentence_index]
-
-                # do not consider sentences that are too long
-                if selected_length + sentence.length > summary_size:
-                    continue
-
-                # compute the score difference if we add the sentence
-                sentence_score_delta = sum(self.weights[c]
-                                           for c in sentence.concepts
-                                           if c not in selected_concepts)
-
-                if sentence_score_delta > best_singleton_score:
-                    best_singleton_score = sentence_score_delta
-                    best_singleton = sentence_index
-
-                # compute the normalization of the score difference by
-                # the sentence length
-                sentence_gain = sentence_score_delta / float(sentence.length)
-
-                if best_sentence is None\
-                   or sentence_gain == best_gain\
-                   and sentence.length < best_sentence.length\
-                   or sentence_gain > best_gain:
-                    best_sentence_index = sentence_index
-                    best_sentence = sentence
-                    best_gain = sentence_gain
-                    best_score_delta = sentence_score_delta
-
-            # add the best sentence if its gain is non null
-            if best_gain > 0:
-
-                # add the sentence index to the selected set
-                selected_sentence_indices.add(best_sentence_index)
-
-                # update the selected concepts
-                selected_concepts |= set(best_sentence.concepts)
-
-                # update the total length of the selected sentences
-                selected_length += best_sentence.length
-
-                # update the score of the selected sentences
-                selected_score += best_score_delta
-
-            # remove sentence index from indices
-            sentence_indices.remove(sentence_index)
-
-        if best_singleton_score > selected_score:
-            return best_singleton_score, set([best_singleton])
-
-        # returns the (objective function value, solution) tuple
-        return selected_score, selected_sentence_indices
-
-    def greedy_approximation3(self, summary_size=100):
-        """Greedy approximation of the ILP model.
-
-        Args:
-            summary_size (int): the maximum size in words of the summary,
-              defaults to 100.
-
-        Returns:
-            (value, set) tuple (int, list): the value of the approximated
-              objective function and the set of selected sentences as a tuple.
-
-        """
+        # initialize the inverted c2s dictionary if not already created
         if not self.c2s:
-            raise AssertionError(
-                "The solver's reverse index c2s is empty. "
-                "Did you execute solver.compute_c2s()?")
+            self.compute_c2s()
+
         # initialize weights
         weights = {}
 
@@ -554,7 +334,7 @@ class ConceptBasedILPSummarizer:
 
     def tabu_search(self, summary_size=100, memory_size=5, iterations=30):
         """Greedy approximation of the ILP model with a tabu search
-          meta-heuritstic.
+          meta-heuristic.
 
         Args:
             summary_size (int): the maximum size in words of the summary,
