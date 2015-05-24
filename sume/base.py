@@ -8,6 +8,7 @@
 """
 
 import re
+from collections import Counter
 
 class State:
     """ State class
