@@ -11,7 +11,7 @@ algorithm was published and described in:
 
 A typical usage of this module is:
 
- import sume
+    import sume
 
  # directory from which text documents to be summarized are loaded. Input
  # files are expected to be in one tokenized sentence per line format.
