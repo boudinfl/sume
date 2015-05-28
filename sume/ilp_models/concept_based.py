@@ -115,39 +115,6 @@ class ConceptBasedILPSummarizer:
                 # add the ngram to the concepts
                 self.sentences[i].concepts.append(' '.join(ngram))
 
-    def extract_sequences(self, nb_stopwords=1):
-        """Extract the sequences of words from the input sentences.
-
-        Args:
-            nb_stopwords (int): the number of stopwords, defaults to 1
-        """
-
-        for i, sentence in enumerate(self.sentences):
-            
-            stems = [self.stemmer.stem(t) for t in sentence.tokens]
-
-            for j in range(len(stems)):
-
-                for k in range(j+1, len(stems)+1):
-
-                    # stop if punctuation mark
-                    if not re.search('[a-zA-Z0-9]', stems[k-1]):
-                        break
-
-                    # sequence as concept
-                    concept = stems[j:k]
-
-                    # check stopwords
-                    wrongs = [u for u in concept if u in self.stoplist]
-
-                    # stop if too much stopwords
-                    if len(wrongs) > nb_stopwords:
-                        break
-
-                    # add the ngram to the concepts
-                    self.sentences[i].concepts.append(' '.join(concept))
-                    
-
     def compute_document_frequency(self):
         """Compute the document frequency of each concept.
 
