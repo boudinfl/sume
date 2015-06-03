@@ -15,6 +15,7 @@ A typical usage of this module is:
 
     # directory from which text documents to be summarized are loaded. Input
     # files are expected to be in one tokenized sentence per line format.
+    # Files are expected to end in 'sentences' (e.g. file1.sentences or file1_sentences)
     dir_path = "/tmp/"
 
     # create the summarizer
