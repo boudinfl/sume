@@ -149,17 +149,17 @@ class Doc2VecSummarizer:
                 else:
                     sentence.concepts.append(token.lower())
 
-    def score_sentences(self, path_to_model, summary_size=100):
+    def score_sentences(self, doc2vec_model, summary_size=100):
         """Greedy approximation for scoring the sentences using the Doc2Vec 
            model.
 
            Args:
-               path_to_model (str): the path for the Doc2Vec trained model 
+               doc2vec_model (Doc2Vec model): the Doc2Vec trained model 
 
         """
 
         # load the model
-        model = Doc2Vec.load(path_to_model)
+        model = doc2vec_model #Doc2Vec.load(path_to_model)
 
         # filter the concepts according to the model
         for i, sentence in enumerate(self.sentences):
