@@ -84,10 +84,7 @@ class ConceptBasedILPSummarizer:
         Args:
             n (int): the number of words for ngrams, defaults to 2
         """
-        for i in range(len(self.sentences)):
-
-            # current sentence
-            sentence = self.sentences[i]
+        for i, sentence in enumerate(self.sentences):
 
             # for each ngram of words
             for j in range(len(sentence.tokens)-(n-1)):
