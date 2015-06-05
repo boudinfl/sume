@@ -15,16 +15,13 @@ A typical usage of this module is:
 
     # directory from which text documents to be summarized are loaded. Input
     # files are expected to be in one tokenized sentence per line format.
-    # files are expected to end in 'sentences' (e.g. file1.sentences or file1_sentences)
-    # you can also specify another extension to the ConceptBasedILPSummarize when you
-    # create it.
     dir_path = "/tmp/"
 
     # create the summarizer
     s = sume.ilp_models.ConceptBasedILPSummarizer(dir_path)
 
-    # load documents
-    s.read_documents()
+    # load documents with extension 'txt'
+    s.read_documents(file_extension="txt")
 
     # compute the parameters needed by the model
     # extract bigrams as concepts

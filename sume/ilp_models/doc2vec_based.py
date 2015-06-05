@@ -23,32 +23,33 @@ class Doc2VecSummarizer:
     """Doc2Vec summarization model.
 
     """
-    def __init__(self, input_directory, file_extension="sentences"):
+    def __init__(self, input_directory):
         """
         Args:
             input_directory (str): the directory from which text documents to
               be summarized are loaded.
-            file_extension (str): the file extension for input documents,
-              defaults to sentences.
 
         """
         self.input_directory = input_directory
-        self.file_extension = file_extension
         self.sentences = []
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
         self.topic = []
 
-    def read_documents(self):
+    def read_documents(self, file_extension="txt"):
         """Read the input files in the given directory.
 
         Load the input files and populate the sentence list. Input files are
         expected to be in one tokenized sentence per line format.
+
+        Args:
+            file_extension (str): the file extension for input documents,
+              defaults to txt.
         """
         for infile in os.listdir(self.input_directory):
 
             # skip files with wrong extension
-            if infile[-len(self.file_extension):] != self.file_extension:
+            if not infile.endswith(file_extension):
                 continue
 
             with codecs.open(self.input_directory + '/' + infile,
