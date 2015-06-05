@@ -16,8 +16,10 @@ import codecs
 import sys
 import bisect
 import time
+import random
 
 import nltk
+import numpy as np
 from gensim.models import Doc2Vec
 
 class Doc2VecSummarizer:
@@ -163,11 +165,14 @@ class Doc2VecSummarizer:
         self.topic = [u for u in self.topic if u in model.vocab]
 
     def greedy_approximation(self, model, summary_size=100):
-        """Greedy approximation for scoring the sentences using the Doc2Vec 
-           model.
+        """Greedy approximation for finding the best set of sentences.
 
-           Args:
-               model (Doc2Vec model): the Doc2Vec trained model 
+        Args:
+            model (Doc2Vec model): a Doc2Vec trained model.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated
+              objective function and the set of selected sentences as a tuple.
 
         """
 
@@ -223,26 +228,124 @@ class Doc2VecSummarizer:
             # remove the selected sentence 
             C.remove(i)
 
-        return S
+        return summary_weight, S
 
+    def fitness(self, tab, model):
+        """Fitness function."""
+        if tab.size == 0:
+            return 0.0
+        words = []
+        for u in tab:
+            words += self.sentences[u].concepts
+        return model.n_similarity(self.topic, words)
 
+    def differential_evolution(self,
+                               model,
+                               NP=20, 
+                               gen_max=100, 
+                               CR=0.5, 
+                               F=1, 
+                               summary_size=100):
+        """Approximate using a differential evolution."""
 
+        # initialize dimension for arrays as number of sentences
+        D = len(self.sentences)
 
+        # initialize an array for computing summary size
+        l = np.array([u.length for u in self.sentences])
 
+        # initialize the container for the population
+        P = []
 
+        # initialize counter for generations
+        count = 0
 
+        # initialize cost container
+        cost = []
 
+        ########################################################################
+        # STEP 1 : initialize initial population
+        ########################################################################
+        for i in xrange(NP):
 
+            # generate an empty individual
+            indiv = np.zeros(D)
 
+            # initialize random element
+            random_element = 0
 
+            # modify random elements while summary size is not reached
+            while np.sum(np.multiply(l, indiv)) <= summary_size:
+                random_element = random.randint(0, D-1)
+                indiv[random_element] = 1
 
+            # modify last element
+            indiv[random_element] = 0
 
+            # add the individual to the initial population
+            P.append(indiv)
 
+            # add the cost of the individual
+            cost.append(self.fitness(np.flatnonzero(indiv), model))
+        ########################################################################
 
+        ########################################################################
+        # MAIN LOOP
+        ########################################################################
+        while count < gen_max:
 
+            # Loop through population
+            for i in xrange(NP):
 
+                ################################################################
+                # STEP 2 : Mutate/Recombine
+                ################################################################
 
+                # Randomly pick 3 vectors all different from i
+                a = random.randint(0, NP-1)
+                while a == i:
+                    a = random.randint(0, NP-1)
 
+                b = random.randint(0, NP-1)
+                while b == i and b == a:
+                    b = random.randint(0, NP-1)
 
+                c = random.randint(0, NP-1)
+                while c == i and c == a and c == b:
+                    c = random.randint(0, NP-1)
 
+                # Randomly pick first parameter
+                j = random.randint(0, D-1)
 
+                # itilialize trial with P[i]
+                trial = np.copy(P[i])
+
+                # load D parameters into trial
+                for k in xrange(D):
+
+                    # Perfom D-1 binomial trials
+                    if random.random() >= CR or k == D:
+                        trial[k] = (P[c][k] + F*(P[a][k] - P[b][k]))%2
+
+                # Check consistency of trial
+                while np.sum(np.multiply(l, trial)) > summary_size:
+                    non_zeros = np.flatnonzero(trial)
+                    random_element = random.choice(non_zeros)
+                    trial[random_element] = 0
+
+                ################################################################
+                # STEP 3 : Evaluate/Select
+                ################################################################
+                score = self.fitness(np.flatnonzero(trial), model)
+                # print score, cost[i]
+                if score > cost[i]:
+                    P[i] = trial
+                    cost[i] = score
+
+            # end of generation, increment counter
+            count+=1
+        ########################################################################
+
+        objective = np.max(cost)
+        return (objective, set(np.flatnonzero(P[cost.index(objective)])))
+        ########################################################################
