@@ -15,6 +15,7 @@ import re
 import codecs
 import sys
 import bisect
+import time
 
 import nltk
 from gensim.models import Doc2Vec
@@ -124,7 +125,7 @@ class Doc2VecSummarizer:
         self.sentences = pruned_sentences
 
     def build_representations(self, stemming=False):
-        """Build the word representations for each sentence
+        """Build the word representations for each sentence and for the topic.
 
            Args:
                stemming (bool): indicates whether stemming is applied, defaults 
@@ -150,54 +151,53 @@ class Doc2VecSummarizer:
                 else:
                     sentence.concepts.append(token.lower())
 
-    def score_sentences(self, doc2vec_model, summary_size=100):
+            for token in self.sentences[i].concepts:
+                self.topic.append(token)
+
+    def filter_out_of_vocabulary(self, model):
+        """Filter out of vocabulary words."""
+        for i, sentence in enumerate(self.sentences):
+            self.sentences[i].concepts = [u for u in sentence.concepts \
+                                          if u in model.vocab]
+
+        self.topic = [u for u in self.topic if u in model.vocab]
+
+    def greedy_approximation(self, model, summary_size=100):
         """Greedy approximation for scoring the sentences using the Doc2Vec 
            model.
 
            Args:
-               doc2vec_model (Doc2Vec model): the Doc2Vec trained model 
+               model (Doc2Vec model): the Doc2Vec trained model 
 
         """
 
-        # load the model
-        model = doc2vec_model #Doc2Vec.load(path_to_model)
+        # initialize the set of selected items
+        S = set([])
 
-        # filter the concepts according to the model
-        for i, sentence in enumerate(self.sentences):
-            self.sentences[i].concepts = [u for u in sentence.concepts \
-                                          if u in model.vocab]
-            # populates the topic container
-            for token in self.sentences[i].concepts:
-                self.topic.append(token)
-
-        # initialize the subset of selected sentences
-        G = set([])
-
-        # initialize the set of sentences
-        U = set(range(len(self.sentences)))
+        # initialize the set of item candidates
+        C = set(range(len(self.sentences)))
 
         # initialize summary variables
         summary_weight = 0.0
         summary_length = 0.0
         summary_words = []
 
-        while len(U) > 0:
+        # main loop -> until the set of candidates is empty
+        while len(C) > 0:
 
             # initialize the score container
             scores = []
 
-            # remove sentences that are too long
-            remaining_sentences = U.copy()
-            for i in remaining_sentences:
-                if summary_length+self.sentences[i].length > summary_size:
-                    U.remove(i)
+            # remove unsuitables items
+            C = set([c for c in C \
+                    if summary_length+self.sentences[c].length <= summary_size])
 
             # stop if no scores are to be computed
-            if len(U) == 0:
+            if not C:
                 break
 
             # initialize the score of each candidate sentence
-            for i in U:
+            for i in C:
 
                 # compute the summary similarity
                 sim = model.n_similarity(self.topic,
@@ -205,7 +205,7 @@ class Doc2VecSummarizer:
 
                 # compute the gain
                 gain = (sim-summary_weight)
-                gain /= float(summary_length+self.sentences[i].length)
+                # gain /= float(summary_length+self.sentences[i].length)
 
                 # add the score for the candidate sentence
                 bisect.insort(scores, (gain, i, sim))
@@ -215,15 +215,15 @@ class Doc2VecSummarizer:
 
             # test if summary length is not exceeded
             if summary_weight+self.sentences[i].length <= summary_size:
-                G.add(i)
+                S.add(i)
                 summary_weight = sim
                 summary_length += self.sentences[i].length
                 summary_words += self.sentences[i].concepts
 
             # remove the selected sentence 
-            U.remove(i)
+            C.remove(i)
 
-        return G
+        return S
 
 
 
