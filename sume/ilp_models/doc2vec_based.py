@@ -9,18 +9,18 @@
 """
 
 from sume.base import Sentence, untokenize
+from sume.utils import Server
 
-import os
-import re
-import codecs
-import sys
 import bisect
-import time
+import codecs
+import operator
+import os
 import random
+import re
 
 import nltk
 import numpy as np
-from gensim.models import Doc2Vec
+
 
 class Doc2VecSummarizer:
     """Doc2Vec summarization model.
@@ -130,7 +130,7 @@ class Doc2VecSummarizer:
         """Build the word representations for each sentence and for the topic.
 
            Args:
-               stemming (bool): indicates whether stemming is applied, defaults 
+               stemming (bool): indicates whether stemming is applied, defaults
                  to False
 
         """
@@ -159,7 +159,7 @@ class Doc2VecSummarizer:
     def filter_out_of_vocabulary(self, model):
         """Filter out of vocabulary words."""
         for i, sentence in enumerate(self.sentences):
-            self.sentences[i].concepts = [u for u in sentence.concepts \
+            self.sentences[i].concepts = [u for u in sentence.concepts
                                           if u in model.vocab]
 
         self.topic = [u for u in self.topic if u in model.vocab]
@@ -194,8 +194,9 @@ class Doc2VecSummarizer:
             scores = []
 
             # remove unsuitables items
-            C = set([c for c in C \
-                    if summary_length+self.sentences[c].length <= summary_size])
+            C = set([c for c in C
+                    if summary_length + self.sentences[c].length <=
+                     summary_size])
 
             # stop if no scores are to be computed
             if not C:
@@ -205,8 +206,9 @@ class Doc2VecSummarizer:
             for i in C:
 
                 # compute the summary similarity
-                sim = model.n_similarity(self.topic,
-                        self.sentences[i].concepts+summary_words)
+                sim = model.n_similarity(
+                    self.topic,
+                    self.sentences[i].concepts + summary_words)
 
                 # compute the gain
                 gain = (sim-summary_weight)
@@ -216,7 +218,7 @@ class Doc2VecSummarizer:
                 bisect.insort(scores, (gain, i, sim))
 
             # select best candidate
-            gain, i , sim = scores[-1]
+            gain, i, sim = scores[-1]
 
             # test if summary length is not exceeded
             if summary_weight+self.sentences[i].length <= summary_size:
@@ -225,9 +227,61 @@ class Doc2VecSummarizer:
                 summary_length += self.sentences[i].length
                 summary_words += self.sentences[i].concepts
 
-            # remove the selected sentence 
+            # remove the selected sentence
             C.remove(i)
 
+        return summary_weight, S
+
+    def greedy_approximation_par(self, model, summary_size=100):
+        """Greedy approximation for finding the best set of sentences.
+
+        Args:
+            model (Doc2Vec model): a Doc2Vec trained model.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated
+              objective function and the set of selected sentences as a tuple.
+
+        """
+
+        server = Server(model, self.topic, self.sentences)
+
+        # initialize the set of selected items
+        S = set()
+
+        # initialize the set of item candidates
+        C = set(range(len(self.sentences)))
+
+        # initialize summary variables
+        summary_weight = 0.0
+        summary_length = 0.0
+        summary_words = []
+
+        # main loop -> until the set of candidates is empty
+        while len(C) > 0:
+
+            # remove unsuitable items
+            C = set(c for c in C
+                    if summary_length + self.sentences[c].length <=
+                    summary_size)
+
+            # stop if no scores are to be computed
+            if not C:
+                break
+
+            sims = server.compute_sims(summary_words, C)
+
+            # select best candidate
+            i, sim = max(sims, key=operator.itemgetter(1))
+
+            S.add(i)
+            summary_weight = sim
+            summary_length += self.sentences[i].length
+            summary_words += self.sentences[i].concepts
+
+            # remove the selected sentence
+            C.remove(i)
+        server.exit()
         return summary_weight, S
 
     def fitness(self, tab, model):
@@ -241,10 +295,10 @@ class Doc2VecSummarizer:
 
     def differential_evolution(self,
                                model,
-                               NP=20, 
-                               gen_max=100, 
-                               CR=0.5, 
-                               F=1, 
+                               NP=20,
+                               gen_max=100,
+                               CR=0.5,
+                               F=1,
                                summary_size=100):
         """Approximate using a differential evolution."""
 
@@ -263,9 +317,9 @@ class Doc2VecSummarizer:
         # initialize cost container
         cost = []
 
-        ########################################################################
+        #######################################################################
         # STEP 1 : initialize initial population
-        ########################################################################
+        #######################################################################
         for i in xrange(NP):
 
             # generate an empty individual
@@ -287,19 +341,19 @@ class Doc2VecSummarizer:
 
             # add the cost of the individual
             cost.append(self.fitness(np.flatnonzero(indiv), model))
-        ########################################################################
+        #######################################################################
 
-        ########################################################################
+        #######################################################################
         # MAIN LOOP
-        ########################################################################
+        #######################################################################
         while count < gen_max:
 
             # Loop through population
             for i in xrange(NP):
 
-                ################################################################
+                ###############################################################
                 # STEP 2 : Mutate/Recombine
-                ################################################################
+                ###############################################################
 
                 # Randomly pick 3 vectors all different from i
                 a = random.randint(0, NP-1)
@@ -325,7 +379,7 @@ class Doc2VecSummarizer:
 
                     # Perfom D-1 binomial trials
                     if random.random() >= CR or k == D:
-                        trial[k] = (P[c][k] + F*(P[a][k] - P[b][k]))%2
+                        trial[k] = (P[c][k] + F * (P[a][k] - P[b][k])) % 2
 
                 # Check consistency of trial
                 while np.sum(np.multiply(l, trial)) > summary_size:
@@ -333,9 +387,9 @@ class Doc2VecSummarizer:
                     random_element = random.choice(non_zeros)
                     trial[random_element] = 0
 
-                ################################################################
+                ###############################################################
                 # STEP 3 : Evaluate/Select
-                ################################################################
+                ###############################################################
                 score = self.fitness(np.flatnonzero(trial), model)
                 # print score, cost[i]
                 if score > cost[i]:
@@ -343,9 +397,9 @@ class Doc2VecSummarizer:
                     cost[i] = score
 
             # end of generation, increment counter
-            count+=1
-        ########################################################################
+            count += 1
+        #######################################################################
 
         objective = np.max(cost)
         return (objective, set(np.flatnonzero(P[cost.index(objective)])))
-        ########################################################################
+        #######################################################################
