@@ -270,7 +270,6 @@ class Doc2VecSummarizer:
                 break
 
             sims = server.compute_sims(summary_words, C)
-            print sims
 
             # select best candidate
             i, sim = max(sims, key=operator.itemgetter(1))
