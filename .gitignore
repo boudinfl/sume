@@ -1,4 +1,9 @@
-
+auto
+\#*
+.#*
+*~
 *.pyc
-
 sume/ilp_models/dev.py
+/run.py
+/models
+/data
