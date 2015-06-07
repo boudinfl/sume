@@ -15,16 +15,21 @@ parser.add_argument('-m', '--min_count', default=5, type=int)
 parser.add_argument('-t', '--threads', default=1, type=int)
 parser.add_argument('-w', '--window', default=8, type=int)
 parser.add_argument('-e', '--epoch', default=10, type=int)
+parser.add_argument('--sample', default=int(10e12), type=int)
 args = parser.parse_args()
 
 sentences = []
 
 for input_file in args.sources:
-    print 'info loading data source: ', input_file
+    print 'info - loading data source: ', input_file
     with codecs.open(input_file, 'r', 'utf-8') as f:
         for line in f:
             sentences.append(LabeledSentence(line.strip().split(), 
                              'SENT_'+str(len(sentences))))
+            if len(sentences) >= args.sample:
+                break
+
+print 'info - building model from', len(sentences), 'items'
 
 model = Doc2Vec(size=args.dimension,        # dimensionality of the feature vectors
                 window=args.window,         # maximum distance between the current and predicted word
