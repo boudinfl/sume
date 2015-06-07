@@ -21,17 +21,23 @@ import re
 import nltk
 import numpy as np
 from gensim import matutils
+from gensim.models.doc2vec import LabeledSentence
+from gensim.models.word2vec import Vocab
 
 
 class Doc2VecSummarizer:
     """Doc2Vec summarization model.
 
     """
-    def __init__(self, input_directory, model):
+    def __init__(self, input_directory, model, method="awe"):
         """
         Args:
             input_directory (str): the directory from which text documents to
               be summarized are loaded.
+            model (Doc2Vec model): the model to use to compute similarities
+              between text segments.
+            method          (str): the method to use to build embeddings. Also
+              influences the way similarities are computed.
 
         """
         self.input_directory = input_directory
@@ -42,6 +48,7 @@ class Doc2VecSummarizer:
         self.topic_embedding = None
         self.embeddings = {}
         self.model = model
+        self.method = method
 
     def read_documents(self, file_extension="txt"):
         """Read the input files in the given directory.
@@ -169,17 +176,97 @@ class Doc2VecSummarizer:
         self.topic = [u for u in self.topic if u in self.model.vocab]
 
     def build_embeddings(self):
-        for s in self.sentences:
-            self.embeddings[s] = np.array([self.model[t] for t in s.concepts])\
-                                   .mean(axis=0)
-        self.topic_embedding = matutils.unitvec(
-            np.array([self.model[t] for t in self.topic]).mean(axis=0))
+        """Build embeddings for the multi-document text and for individual
+        sentences.
+
+        Available methods are "awe" for Average Word Embeddings and
+        "infer" for the paragraph2vec infer algorithm.
+
+        """
+        if self.method == "awe":
+            for s in self.sentences:
+                self.embeddings[s] = np.array([self.model[t]
+                                               for t in s.concepts])\
+                                       .mean(axis=0)
+                self.topic_embedding = matutils.unitvec(
+                    np.array([self.model[t] for t in self.topic])
+                    .mean(axis=0))
+
+        # based on https://gist.github.com/zseder/4201551d7f8608f0b82b
+        # and https://groups.google.com/forum/#!topic/gensim/EFy1f0QwkKI
+        elif self.method == "infer":
+            # number of sentences used during model training
+            n_train_sents = len([l for l in self.model.vocab
+                                 if l.startswith("SENT_")])
+
+            # sequences we want to embed. Includes sentences and
+            # multi-document text.
+            sequences = [LabeledSentence(s.concepts,
+                                         ["SENT_%s" % (n_train_sents + i)])
+                         for i, s in enumerate(self.sentences)]
+            sequences += [LabeledSentence(self.topic, ["TOPIC_0"])]
+
+            # vocabulary size before inference step
+            n_vocab = len(self.model.vocab)
+
+            # number of sequences to embed
+            n_sequences = len(sequences)
+            for i, sequence in enumerate(sequences):
+                vocab_index = n_vocab + i
+                label = sequence.labels[0]
+                # create a vocabulary entry
+                self.model.vocab[label] = Vocab(
+                    count=1,
+                    index=vocab_index,
+                    code=[0],
+                    sample_probability=1.)
+                # create a reverse index entry
+                self.model.index2word.append(label)
+            # add rows to syn0 to be able to train the new sequences
+            self.model.syn0 = np.vstack((
+                self.model.syn0,
+                np.empty((n_sequences, self.model.layer1_size),
+                         dtype=np.float32)))
+            # initialize them randomly
+            for i in xrange(n_vocab, n_vocab + n_sequences):
+                np.random.seed(
+                    np.uint32(self.model.hashfxn(
+                        self.model.index2word[i] + str(self.model.seed))))
+                self.model.syn0[i] = (np.random.rand(self.model.layer1_size) -
+                                      0.5) / self.model.layer1_size
+
+            # train the model
+            self.model.train_words = False
+            self.model.train_lbls = True
+            self.model.alpha = 0.025
+            self.model.min_alpha = 0.025
+            for epoch in xrange(10):
+                self.model.train(sequences)
+                self.model.alpha -= 0.002
+                self.model.min_alpha = self.model.alpha
+
+            # put the obtained embeddings in our summarizer state
+            self.topic_embedding = matutils.unitvec(self.model["TOPIC_0"])
+            for i, sentence in enumerate(self.sentences):
+                label = "SENT_%s" % (n_train_sents + i)
+                self.embeddings[sentence] = self.model[label]
+        else:
+            raise AssertionError('self.method should be "awe" or "infer".')
 
     def average_cosinus_similarity(self, sentences):
-        sentences_embedding = matutils.unitvec(np.average(
-            [self.embeddings[self.sentences[s]] for s in sentences],
-            axis=0,
-            weights=[len(self.sentences[s].concepts) for s in sentences]))
+        # here we need to compute a weighted average of sentence embeddings
+        # to obtain a word embedding average
+        if self.method == "awe":
+            sentences_embedding = matutils.unitvec(np.average(
+                [self.embeddings[self.sentences[s]] for s in sentences],
+                axis=0,
+                weights=[len(self.sentences[s].concepts) for s in sentences]))
+        # here just a sentence embedding average. Should be another infer step
+        # eventually
+        elif self.method == "infer":
+            sentences_embedding = matutils.unitvec(np.mean(
+                [self.embeddings[self.sentences[s]] for s in sentences],
+                axis=0))
         return np.dot(self.topic_embedding, sentences_embedding)
 
     def greedy_approximation(self, summary_size=100):
