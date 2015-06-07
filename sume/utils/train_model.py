@@ -24,8 +24,8 @@ for input_file in args.sources:
     print 'info - loading data source: ', input_file
     with codecs.open(input_file, 'r', 'utf-8') as f:
         for line in f:
-            sentences.append(LabeledSentence(line.strip().split(), 
-                             'SENT_'+str(len(sentences))))
+            sentences.append(LabeledSentence(line.strip().split(),
+                                             ['SENT_%s' % len(sentences)]))
             if len(sentences) >= args.sample:
                 break
 
@@ -39,7 +39,7 @@ model = Doc2Vec(size=args.dimension,        # dimensionality of the feature vect
                 min_alpha=0.025)            # use fixed learning rate
 
 model.build_vocab(sentences)
- 
+
 for epoch in range(args.epoch):
     print "epoch", epoch
     model.train(sentences)
