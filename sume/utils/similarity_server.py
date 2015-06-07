@@ -5,11 +5,9 @@ import multiprocessing
 
 class Worker(multiprocessing.Process):
 
-    def __init__(self, task_queue, result_queue, model, topic, sentences):
+    def __init__(self, task_queue, result_queue, summarizer):
         multiprocessing.Process.__init__(self)
-        self.model = model
-        self.topic = topic
-        self.sentences = sentences
+        self.summarizer = summarizer
         self.task_queue = task_queue
         self.result_queue = result_queue
 
@@ -21,16 +19,15 @@ class Worker(multiprocessing.Process):
                 break
             summary, sentence = task
             self.result_queue.put(
-                (sentence, self.model.n_similarity(
-                    self.topic,
-                    summary + self.sentences[sentence].concepts)))
+                (sentence, self.summarizer.average_cosinus_similarity(
+                    summary | {sentence})))
             self.task_queue.task_done()
         return
 
 
 class Server():
 
-    def __init__(self, model, topic, sentences, n_workers=None):
+    def __init__(self, summarizer, n_workers=None):
         self.tasks = multiprocessing.JoinableQueue()
         self.results = multiprocessing.Queue()
         if n_workers is None:
@@ -39,9 +36,7 @@ class Server():
             self.n_workers = n_workers
         self.workers = [Worker(self.tasks,
                                self.results,
-                               model,
-                               topic,
-                               sentences)
+                               summarizer)
                         for i in xrange(self.n_workers)]
         for worker in self.workers:
             worker.start()

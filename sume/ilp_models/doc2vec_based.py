@@ -20,13 +20,14 @@ import re
 
 import nltk
 import numpy as np
+from gensim import matutils
 
 
 class Doc2VecSummarizer:
     """Doc2Vec summarization model.
 
     """
-    def __init__(self, input_directory):
+    def __init__(self, input_directory, model):
         """
         Args:
             input_directory (str): the directory from which text documents to
@@ -38,6 +39,9 @@ class Doc2VecSummarizer:
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
         self.topic = []
+        self.topic_embedding = None
+        self.embeddings = {}
+        self.model = model
 
     def read_documents(self, file_extension="txt"):
         """Read the input files in the given directory.
@@ -156,24 +160,35 @@ class Doc2VecSummarizer:
             for token in self.sentences[i].concepts:
                 self.topic.append(token)
 
-    def filter_out_of_vocabulary(self, model):
+    def filter_out_of_vocabulary(self):
         """Filter out of vocabulary words."""
         for i, sentence in enumerate(self.sentences):
             self.sentences[i].concepts = [u for u in sentence.concepts
-                                          if u in model.vocab]
+                                          if u in self.model.vocab]
 
-        self.topic = [u for u in self.topic if u in model.vocab]
+        self.topic = [u for u in self.topic if u in self.model.vocab]
 
-    def greedy_approximation(self, model, summary_size=100):
+    def build_embeddings(self):
+        for s in self.sentences:
+            self.embeddings[s] = np.array([self.model[t] for t in s.concepts])\
+                                   .mean(axis=0)
+        self.topic_embedding = matutils.unitvec(
+            np.array([self.model[t] for t in self.topic]).mean(axis=0))
+
+    def average_cosinus_similarity(self, sentences):
+        sentences_embedding = matutils.unitvec(np.average(
+            [self.embeddings[self.sentences[s]] for s in sentences],
+            axis=0,
+            weights=[len(self.sentences[s].concepts) for s in sentences]))
+        return np.dot(self.topic_embedding, sentences_embedding)
+
+    def greedy_approximation(self, summary_size=100):
         """Greedy approximation for finding the best set of sentences.
-
         Args:
-            model (Doc2Vec model): a Doc2Vec trained model.
-
+            summary_size (int): word length limit of the summary.
         Returns:
             (value, set) tuple (int, list): the value of the approximated
               objective function and the set of selected sentences as a tuple.
-
         """
 
         # initialize the set of selected items
@@ -206,7 +221,7 @@ class Doc2VecSummarizer:
             for i in C:
 
                 # compute the summary similarity
-                sim = model.n_similarity(
+                sim = self.model.n_similarity(
                     self.topic,
                     self.sentences[i].concepts + summary_words)
 
@@ -232,19 +247,17 @@ class Doc2VecSummarizer:
 
         return summary_weight, S
 
-    def greedy_approximation_par(self, model, summary_size=100):
+    def greedy_approximation_fast(self, summary_size=100):
         """Greedy approximation for finding the best set of sentences.
 
         Args:
-            model (Doc2Vec model): a Doc2Vec trained model.
+            summary_size (int): word length limit of the summary.
 
         Returns:
             (value, set) tuple (int, list): the value of the approximated
               objective function and the set of selected sentences as a tuple.
 
         """
-
-        server = Server(model, self.topic, self.sentences)
 
         # initialize the set of selected items
         S = set()
@@ -254,8 +267,7 @@ class Doc2VecSummarizer:
 
         # initialize summary variables
         summary_weight = 0.0
-        summary_length = 0.0
-        summary_words = []
+        summary_length = 0
 
         # main loop -> until the set of candidates is empty
         while len(C) > 0:
@@ -269,7 +281,57 @@ class Doc2VecSummarizer:
             if not C:
                 break
 
-            sims = server.compute_sims(summary_words, C)
+            sims = [(c, self.average_cosinus_similarity(S | {c})) for c in C]
+
+            # select best candidate
+            c, sim = max(sims, key=operator.itemgetter(1))
+
+            S.add(c)
+            summary_weight = sim
+            summary_length += self.sentences[c].length
+
+            # remove the selected sentence
+            C.remove(c)
+
+        return summary_weight, S
+
+    def greedy_approximation_par(self, summary_size=100):
+        """Greedy approximation for finding the best set of sentences.
+
+        Args:
+            model (Doc2Vec model): a Doc2Vec trained model.
+
+        Returns:
+            (value, set) tuple (int, list): the value of the approximated
+              objective function and the set of selected sentences as a tuple.
+
+        """
+
+        server = Server(self)
+
+        # initialize the set of selected items
+        S = set()
+
+        # initialize the set of item candidates
+        C = set(range(len(self.sentences)))
+
+        # initialize summary variables
+        summary_weight = 0.0
+        summary_length = 0.0
+
+        # main loop -> until the set of candidates is empty
+        while len(C) > 0:
+
+            # remove unsuitable items
+            C = set(c for c in C
+                    if summary_length + self.sentences[c].length <=
+                    summary_size)
+
+            # stop if no scores are to be computed
+            if not C:
+                break
+
+            sims = server.compute_sims(S, C)
 
             # select best candidate
             i, sim = max(sims, key=operator.itemgetter(1))
@@ -277,29 +339,34 @@ class Doc2VecSummarizer:
             S.add(i)
             summary_weight = sim
             summary_length += self.sentences[i].length
-            summary_words += self.sentences[i].concepts
 
             # remove the selected sentence
             C.remove(i)
         server.exit()
         return summary_weight, S
 
-    def fitness(self, tab, model):
+    def fitness(self, tab):
         """Fitness function."""
         if tab.size == 0:
             return 0.0
         words = []
         for u in tab:
             words += self.sentences[u].concepts
-        return model.n_similarity(self.topic, words)
+        return self.model.n_similarity(self.topic, words)
+
+    def fast_fitness(self, tab):
+        """Fitness function."""
+        if tab.size == 0:
+            return 0.0
+        return self.average_cosinus_similarity(tab)
 
     def differential_evolution(self,
-                               model,
                                NP=20,
                                gen_max=100,
                                CR=0.5,
                                F=1,
-                               summary_size=100):
+                               summary_size=100,
+                               fast_fitness=False):
         """Approximate using a differential evolution."""
 
         # initialize dimension for arrays as number of sentences
@@ -340,7 +407,10 @@ class Doc2VecSummarizer:
             P.append(indiv)
 
             # add the cost of the individual
-            cost.append(self.fitness(np.flatnonzero(indiv), model))
+            if fast_fitness:
+                cost.append(self.fast_fitness(np.flatnonzero(indiv)))
+            else:
+                cost.append(self.fitness(np.flatnonzero(indiv)))
         #######################################################################
 
         #######################################################################
@@ -390,7 +460,10 @@ class Doc2VecSummarizer:
                 ###############################################################
                 # STEP 3 : Evaluate/Select
                 ###############################################################
-                score = self.fitness(np.flatnonzero(trial), model)
+                if fast_fitness:
+                    score = self.fast_fitness(np.flatnonzero(trial))
+                else:
+                    score = self.fitness(np.flatnonzero(trial))
                 # print score, cost[i]
                 if score > cost[i]:
                     P[i] = trial
