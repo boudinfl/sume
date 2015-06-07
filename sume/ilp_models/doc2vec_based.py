@@ -37,7 +37,12 @@ class Doc2VecSummarizer:
             model (Doc2Vec model): the model to use to compute similarities
               between text segments.
             method          (str): the method to use to build embeddings. Also
-              influences the way similarities are computed.
+              influences the way similarities are computed:
+                - "awe" uses average word embeddings to represent sequences of
+                  words;
+                - "infer" uses doc2vec inference step for sentence and topic
+                  embedding, and average sentence embedding for combination of
+                  sentences (should eventually also be an inference step).
 
         """
         self.input_directory = input_directory
