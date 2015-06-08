@@ -10,7 +10,7 @@
 
 from sume.base import Sentence, untokenize
 from sume.utils import Server
-from sume.utils import infer
+from sume.utils import infer_doc2vec
 
 import bisect
 import codecs
@@ -23,8 +23,6 @@ import warnings
 import nltk
 import numpy as np
 from gensim import matutils
-from gensim.models.doc2vec import LabeledSentence
-from gensim.models.word2vec import Vocab
 
 
 class Doc2VecSummarizer:
@@ -195,8 +193,8 @@ class Doc2VecSummarizer:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     self.embeddings[s] = np.array([self.model[t]
-                                                for t in s.concepts])\
-                                          .mean(axis=0)
+                                                   for t in s.concepts])\
+                                           .mean(axis=0)
                     self.topic_embedding = matutils.unitvec(
                         np.array([self.model[t] for t in self.topic])
                         .mean(axis=0))
@@ -205,7 +203,7 @@ class Doc2VecSummarizer:
             sequences = [s.concepts for s in self.sentences]
             sequences += [self.topic]
 
-            embeddings = infer(self.model, sequences)
+            embeddings = infer_doc2vec(self.model, sequences)
 
             sentence_embs, topic_emb = embeddings[:-1], embeddings[-1]
             # put the obtained embeddings in our summarizer state

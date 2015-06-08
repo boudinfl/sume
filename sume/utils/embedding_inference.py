@@ -6,7 +6,7 @@ from gensim.models.word2vec import Vocab
 import numpy as np
 
 
-def infer(model, sequences):
+def infer_doc2vec(model, sequences):
     """Inference step of paragraph2vec
     Args:
         model (Doc2Vec model): the model to use to embed the sequences

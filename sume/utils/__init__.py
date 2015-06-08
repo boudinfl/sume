@@ -1,2 +1,2 @@
 from similarity_server import Server
-from model_inference import infer
+from embedding_inference import infer_doc2vec
