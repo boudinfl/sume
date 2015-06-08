@@ -18,6 +18,7 @@ import operator
 import os
 import random
 import re
+import warnings
 
 import nltk
 import numpy as np
@@ -191,12 +192,14 @@ class Doc2VecSummarizer:
         """
         if self.method == "awe":
             for s in self.sentences:
-                self.embeddings[s] = np.array([self.model[t]
-                                               for t in s.concepts])\
-                                       .mean(axis=0)
-                self.topic_embedding = matutils.unitvec(
-                    np.array([self.model[t] for t in self.topic])
-                    .mean(axis=0))
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    self.embeddings[s] = np.array([self.model[t]
+                                                for t in s.concepts])\
+                                          .mean(axis=0)
+                    self.topic_embedding = matutils.unitvec(
+                        np.array([self.model[t] for t in self.topic])
+                        .mean(axis=0))
 
         elif self.method == "infer":
             sequences = [s.concepts for s in self.sentences]
