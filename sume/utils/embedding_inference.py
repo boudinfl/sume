@@ -3,7 +3,12 @@
 from gensim.models.doc2vec import LabeledSentence
 from gensim.models.word2vec import Vocab
 
+from itertools import chain
+from tempfile import NamedTemporaryFile
+
+import codecs
 import numpy as np
+import subprocess
 
 
 def infer_doc2vec(model, sequences):
@@ -68,3 +73,35 @@ def infer_doc2vec(model, sequences):
 
     return [model["SENT_%s" % (n_train_sents + i)]
             for i in xrange(n_sequences)]
+
+
+def infer_patched_word2vec(w2v_bin, train_sequences, sequences):
+    with NamedTemporaryFile() as w2v_input, \
+         NamedTemporaryFile() as w2v_output, \
+         codecs.open(train_sequences, 'r', 'utf-8') as fh_train:
+        for i, sequence in enumerate(chain((' '.join(s) for s in sequences),
+                                           fh_train.readlines())):
+            w2v_input.write((u'_*%s %s\n' % (i, sequence)).encode('utf-8'))
+        subprocess.call([w2v_bin,
+                         '-train', w2v_input.name,
+                         '-output', w2v_output.name,
+                         '-cbow', '0',
+                         '-size', '100',
+                         '-window', '10',
+                         '-negative', '5',
+                         '-hs', '0',
+                         '-sample', '1e-4',
+                         '-threads', '40',
+                         '-binary', '0',
+                         '-iter', '20',
+                         '-min-count', '1',
+                         '-sentence-vectors', '1'])
+        i = 0
+        result = []
+        for line in w2v_output.readlines():
+            if line.startswith('_*'):
+                result.append(np.array(map(float, line.split(' ')[1:-1])))
+                i += 1
+            if i >= len(sequences):
+                break
+    return result
