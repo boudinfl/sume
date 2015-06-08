@@ -4,6 +4,7 @@ auto
 *~
 *.pyc
 sume/ilp_models/dev.py
-/run.py
+/run*.py
 /models
 /data
+word2vec/word2vec
