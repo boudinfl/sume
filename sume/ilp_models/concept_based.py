@@ -347,14 +347,11 @@ class ConceptBasedILPSummarizer:
               objective function and the set of selected sentences as a tuple.
 
         """
+        # compute concept to sentences and concept sets for each sentence
         if not self.c2s:
-            raise AssertionError(
-                "The solver's reverse index c2s is empty. "
-                "Did you execute solver.compute_c2s()?")
+            self.compute_c2s()
         if not self.concept_sets:
-            raise AssertionError(
-                "The solver's concept sets dictionary is empty. "
-                "Did you execute solver.compute_concept_sets()?")
+            self.compute_concept_sets()
 
         # initialize weights
         weights = {}
