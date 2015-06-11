@@ -41,6 +41,8 @@ class ConceptBasedILPSummarizer:
         self.concept_sets = defaultdict(frozenset)
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
+        self.word_frequencies = defaultdict(int)
+        # self.w2s = defaultdict(set)
 
     def read_documents(self, file_extension="txt"):
         """Read the input files in the given directory.
@@ -130,6 +132,16 @@ class ConceptBasedILPSummarizer:
         # loop over the concepts and compute the document frequency
         for concept in self.weights:
             self.weights[concept] = len(self.weights[concept])
+
+    def compute_word_frequency(self):
+        """Compute the frequency of each word in the set of documents. """
+
+        for i, sentence in enumerate(self.sentences):
+            for token in sentence.tokens:
+                t = token.lower() 
+                if not re.search('[a-zA-Z0-9]', t) or t in self.stoplist:
+                    continue
+                self.word_frequencies[t] += 1
 
     def prune_sentences(self,
                         mininum_sentence_length=5,
@@ -482,7 +494,8 @@ class ConceptBasedILPSummarizer:
     def solve_ilp_problem(self,
                           summary_size=100,
                           solver='glpk',
-                          excluded_solutions=[]):
+                          excluded_solutions=[],
+                          unique=False):
         """Solve the ILP formulation of the concept-based model.
 
         Args:
@@ -491,6 +504,8 @@ class ConceptBasedILPSummarizer:
             solver (str): the solver used, defaults to glpk.
             excluded_solutions (list of list): a list of subsets of sentences
               that are to be excluded, defaults to []
+            unique (bool): modify the model so that it produces only one optimal
+              solution, defaults to False
 
         Returns:
             (value, set) tuple (int, list): the value of the objective function
@@ -503,6 +518,13 @@ class ConceptBasedILPSummarizer:
         L = summary_size
         C = len(concepts)
         S = len(self.sentences)
+
+        if not self.word_frequencies:
+            self.compute_word_frequency()
+
+        tokens = self.word_frequencies.keys()
+        f = self.word_frequencies
+        T = len(tokens)
 
         # HACK Sort keys
         concepts = sorted(self.weights, key=self.weights.get, reverse=True)
@@ -524,8 +546,19 @@ class ConceptBasedILPSummarizer:
                                   upBound=1,
                                   cat='Integer')
 
+        # initialize the word binary variables
+        t = pulp.LpVariable.dicts(name='t',
+                                  indexs=range(T),
+                                  lowBound=0,
+                                  upBound=1,
+                                  cat='Integer')
+
         # OBJECTIVE FUNCTION
         prob += sum(w[concepts[i]] * c[i] for i in range(C))
+               
+        if unique:
+            prob += sum(w[concepts[i]] * c[i] for i in range(C)) + \
+                    10e-6 * sum(f[tokens[k]] * t[k] for k in range(T))
 
         # CONSTRAINT FOR SUMMARY SIZE
         prob += sum(s[j] * self.sentences[j].length for j in range(S)) <= L
@@ -540,9 +573,23 @@ class ConceptBasedILPSummarizer:
             prob += sum(s[j] for j in range(S)
                         if concepts[i] in self.sentences[j].concepts) >= c[i]
 
+        # WORD INTEGRITY CONSTRAINTS
+        if unique:
+            for i in range(C):
+                a, b = concepts[i].split(' ')
+                for k in range(T):
+                    if tokens[k] == a or tokens[k] == b:
+                        prob += c[i] <= t[k]
+
+            for k in range(T):
+                prob += sum(c[i] for i in range(C)
+                            if tokens[k] in concepts[i].split(' ')) >= t[k]
+
         # CONSTRAINTS FOR FINDING OPTIMAL SOLUTIONS
         for sentence_set in excluded_solutions:
             prob += sum([s[j] for j in sentence_set]) <= len(sentence_set)-1
+
+        # prob.writeLP('test.lp')
 
         # solving the ilp problem
         if solver == 'gurobi':
@@ -551,7 +598,6 @@ class ConceptBasedILPSummarizer:
             prob.solve(pulp.GLPK(msg=0))
         elif solver == 'cplex':
             prob.solve(pulp.CPLEX(msg=0))
-            # prob.writeLP('test.lp')
         else:
             sys.exit('no solver specified')
 
