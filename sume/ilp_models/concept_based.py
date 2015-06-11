@@ -10,12 +10,11 @@
 
 from sume.base import Sentence, State, untokenize
 
-from collections import Counter, defaultdict, deque
+from collections import defaultdict, deque
 
 import os
 import re
 import codecs
-import bisect
 import random
 import sys
 
@@ -344,7 +343,12 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return sel_score, sel_subset
 
-    def tabu_search(self, summary_size=100, memory_size=5, iterations=30):
+    def tabu_search(self,
+                    summary_size=100,
+                    memory_size=5,
+                    iterations=30,
+                    mutation_size=2,
+                    mutation_group=False):
         """Greedy approximation of the ILP model with a tabu search
           meta-heuristic.
 
@@ -390,11 +394,12 @@ class ConceptBasedILPSummarizer:
             state = self.select_sentences(summary_size,
                                           weights,
                                           state,
-                                          queue)
+                                          queue,
+                                          mutation_group)
             if state.score > best_score:
                 best_subset = state.subset.copy()
                 best_score = state.score
-            to_tabu = set(random.sample(state.subset, 2))
+            to_tabu = set(random.sample(state.subset, mutation_size))
             state = self.unselect_sentences(weights, state, to_tabu)
             queue.extend(to_tabu)
 
@@ -405,7 +410,12 @@ class ConceptBasedILPSummarizer:
         # returns the (objective function value, solution) tuple
         return best_score, best_subset
 
-    def select_sentences(self, summary_size, weights, state, tabu_set):
+    def select_sentences(self,
+                         summary_size,
+                         weights,
+                         state,
+                         tabu_set,
+                         mutation_group):
         """Greedy sentence selector.
 
         Args:
@@ -434,14 +444,23 @@ class ConceptBasedILPSummarizer:
             sort_sent = sorted(((weights[i] / float(self.sentences[i].length),
                                  -self.sentences[i].length,
                                  i)
-                                for i in range(len(self.sentences))),
+                                for i in range(len(self.sentences))
+                                if self.sentences[i].length + state.length <=
+                                summary_size),
                                reverse=True)
 
             # select the first sentence that fits in the length limit
             for sentence_gain, rev_length, sentence_index in sort_sent:
-                if sentence_index not in tabu_set \
-                   and state.length - rev_length <= summary_size:
-                    break
+                if mutation_group:
+                    subset = state.subset | {sentence_index}
+                    for tabu in tabu_set:
+                        if tabu <= subset:
+                            break
+                    else:
+                        break
+                else:
+                    if sentence_index not in tabu_set:
+                        break
             # if we don't find a sentence, break out of the main while loop
             else:
                 break
