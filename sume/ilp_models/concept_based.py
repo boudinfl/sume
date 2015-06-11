@@ -42,7 +42,7 @@ class ConceptBasedILPSummarizer:
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
         self.word_frequencies = defaultdict(int)
-        # self.w2s = defaultdict(set)
+        self.w2s = defaultdict(set)
 
     def read_documents(self, file_extension="txt"):
         """Read the input files in the given directory.
@@ -141,6 +141,8 @@ class ConceptBasedILPSummarizer:
                 t = token.lower() 
                 if not re.search('[a-zA-Z0-9]', t) or t in self.stoplist:
                     continue
+                t = self.stemmer.stem(t)
+                self.w2s[t].add(i)
                 self.word_frequencies[t] += 1
 
     def prune_sentences(self,
@@ -575,15 +577,12 @@ class ConceptBasedILPSummarizer:
 
         # WORD INTEGRITY CONSTRAINTS
         if unique:
-            for i in range(C):
-                a, b = concepts[i].split(' ')
-                for k in range(T):
-                    if tokens[k] == a or tokens[k] == b:
-                        prob += c[i] <= t[k]
+            for k in range(T):
+                for j in self.w2s[tokens[k]]:
+                    prob += s[j] <= t[k]
 
             for k in range(T):
-                prob += sum(c[i] for i in range(C)
-                            if tokens[k] in concepts[i].split(' ')) >= t[k]
+                prob += sum(s[j] for j in self.w2s[tokens[k]]) >= t[k]
 
         # CONSTRAINTS FOR FINDING OPTIMAL SOLUTIONS
         for sentence_set in excluded_solutions:
