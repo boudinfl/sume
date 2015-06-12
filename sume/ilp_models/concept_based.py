@@ -345,10 +345,10 @@ class ConceptBasedILPSummarizer:
 
     def tabu_search(self,
                     summary_size=100,
-                    memory_size=5,
-                    iterations=30,
+                    memory_size=10,
+                    iterations=100,
                     mutation_size=2,
-                    mutation_group=False):
+                    mutation_group=True):
         """Greedy approximation of the ILP model with a tabu search
           meta-heuristic.
 
@@ -359,7 +359,11 @@ class ConceptBasedILPSummarizer:
               to ban at a given time, defaults at 5.
             iterations (int): the number of iterations to run, defaults at
               30.
-
+            mutation_size (int): number of sentences to unselect and add to
+              the tabu list at each iteration.
+            mutation_group (boolean): flag to consider the mutations as a
+              group: we'll check sentence combinations in the tabu list, not
+              sentences alone.
         Returns:
             (value, set) tuple (int, list): the value of the approximated
               objective function and the set of selected sentences as a tuple.
@@ -427,6 +431,9 @@ class ConceptBasedILPSummarizer:
               selecting sentences.
             tabu_set (iterable): set of sentences that are tabu: this
               selector will not consider them.
+            mutation_group (boolean): flag to consider the mutations as a
+              group: we'll check sentence combinations in the tabu list, not
+              sentences alone.
 
         Returns:
             state (State): the new state of the search. Also note that
