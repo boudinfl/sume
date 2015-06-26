@@ -44,9 +44,9 @@ class PatchedWord2VecSummarizer:
         self.input_directory = input_directory
         self.w2v_bin = w2v_bin
         self.train_sequences = train_sequences
-        self.dimensions = dimensions,
-        self.window = window,
-        self.epochs = epochs,
+        self.dimensions = dimensions
+        self.window = window
+        self.epochs = epochs
         self.min_count = min_count
         self.sentences = []
         self.stoplist = nltk.corpus.stopwords.words('english')

@@ -7,8 +7,10 @@ from itertools import chain
 from tempfile import NamedTemporaryFile
 
 import codecs
+import logging
 import numpy as np
 import subprocess
+import sys
 
 
 def infer_doc2vec(model, sequences):
@@ -88,23 +90,26 @@ def infer_patched_word2vec(w2v_bin,
         for i, sequence in enumerate(chain((' '.join(s) for s in sequences),
                                            fh_train.readlines())):
             w2v_input.write((u'_*%s %s\n' % (i, sequence)).encode('utf-8'))
-        code = subprocess.call([w2v_bin,
-                         '-train', w2v_input.name,
-                         '-output', w2v_output.name,
-                         '-cbow', '0',
-                         '-size', str(dimensions),
-                         '-window', str(window),
-                         '-negative', '5',
-                         '-hs', '0',
-                         '-sample', '1e-4',
-                         '-threads', '40',
-                         '-binary', '0',
-                         '-iter', str(epochs),
-                         '-min-count', str(min_count),
-                         '-sentence-vectors', '1'])
+        args = [w2v_bin,
+                '-train', w2v_input.name,
+                '-output', w2v_output.name,
+                '-cbow', '0',
+                '-size', str(dimensions),
+                '-window', str(window),
+                '-negative', '5',
+                '-hs', '0',
+                '-sample', '1e-4',
+                '-threads', '40',
+                '-binary', '0',
+                '-iter', str(epochs),
+                '-min-count', str(min_count),
+                '-sentence-vectors', '1']
+        code = subprocess.call(args)
         if code != 0:
-            raise AssertionError('The external call to word2vec '
-                                 'returned a non zero code')
+            logging.error('The external call to word2vec returned a non zero '
+                          'code. The args were:'
+                          + str(args))
+            sys.exit(1)
         i = 0
         result = []
         for line in w2v_output.readlines():
