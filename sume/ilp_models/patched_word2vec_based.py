@@ -25,7 +25,14 @@ class PatchedWord2VecSummarizer:
     """PatchedWord2Vec summarization model.
 
     """
-    def __init__(self, input_directory, w2v_bin, train_sequences):
+    def __init__(self,
+                 input_directory,
+                 w2v_bin,
+                 train_sequences,
+                 dimensions=400,
+                 window=7,
+                 epochs=20,
+                 min_count=1):
         """
         Args:
             input_directory (str): the directory from which text documents to
@@ -37,6 +44,10 @@ class PatchedWord2VecSummarizer:
         self.input_directory = input_directory
         self.w2v_bin = w2v_bin
         self.train_sequences = train_sequences
+        self.dimensions = dimensions,
+        self.window = window,
+        self.epochs = epochs,
+        self.min_count = min_count
         self.sentences = []
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
@@ -168,7 +179,11 @@ class PatchedWord2VecSummarizer:
         embeddings = map(matutils.unitvec,
                          infer_patched_word2vec(self.w2v_bin,
                                                 self.train_sequences,
-                                                sequences))
+                                                sequences,
+                                                self.dimensions,
+                                                self.window,
+                                                self.epochs,
+                                                self.min_count))
         summary_embeddings = embeddings[:-1]
         topic_embedding = embeddings[-1]
         return [np.dot(topic_embedding, summary_embedding)

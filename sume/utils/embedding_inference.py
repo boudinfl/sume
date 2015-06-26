@@ -75,7 +75,13 @@ def infer_doc2vec(model, sequences):
             for i in xrange(n_sequences)]
 
 
-def infer_patched_word2vec(w2v_bin, train_sequences, sequences):
+def infer_patched_word2vec(w2v_bin,
+                           train_sequences,
+                           sequences,
+                           dimensions,
+                           window,
+                           epochs,
+                           min_count):
     with NamedTemporaryFile() as w2v_input, \
          NamedTemporaryFile() as w2v_output, \
          codecs.open(train_sequences, 'r', 'utf-8') as fh_train:
@@ -86,15 +92,15 @@ def infer_patched_word2vec(w2v_bin, train_sequences, sequences):
                          '-train', w2v_input.name,
                          '-output', w2v_output.name,
                          '-cbow', '0',
-                         '-size', '100',
-                         '-window', '10',
+                         '-size', str(dimensions),
+                         '-window', str(window),
                          '-negative', '5',
                          '-hs', '0',
                          '-sample', '1e-4',
                          '-threads', '40',
                          '-binary', '0',
-                         '-iter', '20',
-                         '-min-count', '1',
+                         '-iter', str(epochs),
+                         '-min-count', str(min_count),
                          '-sentence-vectors', '1'])
         i = 0
         result = []
