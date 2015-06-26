@@ -88,7 +88,7 @@ def infer_patched_word2vec(w2v_bin,
         for i, sequence in enumerate(chain((' '.join(s) for s in sequences),
                                            fh_train.readlines())):
             w2v_input.write((u'_*%s %s\n' % (i, sequence)).encode('utf-8'))
-        subprocess.call([w2v_bin,
+        code = subprocess.call([w2v_bin,
                          '-train', w2v_input.name,
                          '-output', w2v_output.name,
                          '-cbow', '0',
@@ -102,6 +102,9 @@ def infer_patched_word2vec(w2v_bin,
                          '-iter', str(epochs),
                          '-min-count', str(min_count),
                          '-sentence-vectors', '1'])
+        if code != 0:
+            raise AssertionError('The external call to word2vec '
+                                 'returned a non zero code')
         i = 0
         result = []
         for line in w2v_output.readlines():
