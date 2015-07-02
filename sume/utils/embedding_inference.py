@@ -13,6 +13,22 @@ import subprocess
 import sys
 
 
+def infer_new_doc2vec(model,
+                      sequences,
+                      alpha=0.025,
+                      min_alpha=0.001,
+                      epochs=20):
+    """Inference step of paragraph2vec
+    Args:
+        model (Doc2Vec model): the model to use to embed the sequences
+        sequences (list): the sequences to embed
+    """
+    return [model.infer_vector(s,
+                               alpha=alpha,
+                               min_alpha=min_alpha,
+                               steps=epochs)
+            for s in sequences]
+
 def infer_doc2vec(model, sequences):
     """Inference step of paragraph2vec
     Args:
