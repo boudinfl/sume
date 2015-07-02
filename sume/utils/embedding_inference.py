@@ -15,9 +15,9 @@ import sys
 
 def infer_new_doc2vec(model,
                       sequences,
-                      alpha=0.025,
+                      alpha=0.1,
                       min_alpha=0.001,
-                      epochs=20):
+                      epochs=5):
     """Inference step of paragraph2vec
     Args:
         model (Doc2Vec model): the model to use to embed the sequences

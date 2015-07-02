@@ -167,8 +167,8 @@ class NewDoc2VecSummarizer:
                       for sentence in summary
                       for concept in self.sentences[sentence].concepts]
                      for summary in summaries]
-        embeddings = map(matutils.unitvec, infer_new_doc2vec(self.model,
-                                                             sequences))
+        raw_embeddings = infer_new_doc2vec(self.model, sequences)
+        embeddings = map(matutils.unitvec, raw_embeddings)
         return [np.dot(self.topic_embedding, embedding)
                 for embedding in embeddings]
 
@@ -211,7 +211,6 @@ class NewDoc2VecSummarizer:
             # select best candidate
             i, sim = max(enumerate(sims), key=operator.itemgetter(1))
             best_c = C[i]
-
             S.add(best_c)
             summary_weight = sim
             summary_length += self.sentences[best_c].length
