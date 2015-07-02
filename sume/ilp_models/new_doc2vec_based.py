@@ -167,7 +167,6 @@ class NewDoc2VecSummarizer:
                       for sentence in summary
                       for concept in self.sentences[sentence].concepts]
                      for summary in summaries]
-        sequences += [self.topic]
         embeddings = map(matutils.unitvec, infer_new_doc2vec(self.model,
                                                              sequences))
         return [np.dot(self.topic_embedding, embedding)
