@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-""" PatchedWord2Vec summarization methods.
+""" Doc2Vec summarization methods.
 
     authors: Florian Boudin (florian.boudin@univ-nantes.fr)
              Hugo Mougard (hugo.mougard@univ-nantes.fr)
@@ -8,17 +8,18 @@
     date: June 2015
 """
 
-from sume.utils import infer_new_doc2vec
+from sume.ilp_models import Summarizer
 
 import operator
 import re
+import warnings
 
 import numpy as np
 from gensim import matutils
 
 
-class NewDoc2VecSummarizer:
-    """Doc2Vec summarization model using @gojomo's refactor (inference stage).
+class Word2VecSummarizer(Summarizer):
+    """Word2Vec summarization model.
 
     """
     def __init__(self,
@@ -33,7 +34,8 @@ class NewDoc2VecSummarizer:
         Args:
             input_directory (str): the directory from which text documents to
               be summarized are loaded.
-            model (Doc2Vec): Doc2Vec model to use to compute embeddings.
+            model (Word2Vec model): the model to use to compute similarities
+              between text segments.
         """
         super(self.__class__, self).__init__(
             input_directory,
@@ -41,10 +43,13 @@ class NewDoc2VecSummarizer:
             mininum_sentence_length=mininum_sentence_length,
             remove_citations=remove_citations,
             remove_redundancy=remove_redundancy)
-        self.model = model
         self.topic = []
         self.topic_embedding = None
+        self.embeddings = {}
+        self.model = model
         self._build_representations(stemming)
+        self._filter_out_of_vocabulary()
+        self._build_embeddings()
 
     def _build_representations(self, stemming):
         """Build the word representations for each sentence and for the topic.
@@ -76,18 +81,37 @@ class NewDoc2VecSummarizer:
             for token in self.sentences[i].concepts:
                 self.topic.append(token)
 
-    def _average_cosinus_similarities(self, summaries):
-        if self.topic_embedding is None:
-            self.topic_embedding = matutils.unitvec(
-                infer_new_doc2vec(self.model, [self.topic])[0])
-        sequences = [[concept
-                      for sentence in summary
-                      for concept in self.sentences[sentence].concepts]
-                     for summary in summaries]
-        raw_embeddings = infer_new_doc2vec(self.model, sequences)
-        embeddings = map(matutils.unitvec, raw_embeddings)
-        return [np.dot(self.topic_embedding, embedding)
-                for embedding in embeddings]
+    def _filter_out_of_vocabulary(self):
+        """Filter out of vocabulary words."""
+        for i, sentence in enumerate(self.sentences):
+            self.sentences[i].concepts = [u for u in sentence.concepts
+                                          if u in self.model.vocab]
+
+        self.topic = [u for u in self.topic if u in self.model.vocab]
+
+    def _build_embeddings(self):
+        """Build embeddings for the multi-document text and for individual
+        sentences.
+
+        """
+        for s in self.sentences:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                self.embeddings[s] = np.array([self.model[t]
+                                               for t in s.concepts])\
+                                       .mean(axis=0)
+                self.topic_embedding = matutils.unitvec(
+                    np.array([self.model[t] for t in self.topic])
+                    .mean(axis=0))
+
+    def _average_cosinus_similarity(self, sentences):
+        # here we need to compute a weighted average of sentence embeddings
+        # to obtain a word embedding average
+        sentences_embedding = matutils.unitvec(np.average(
+            [self.embeddings[self.sentences[s]] for s in sentences],
+            axis=0,
+            weights=[len(self.sentences[s].concepts) for s in sentences]))
+        return np.dot(self.topic_embedding, sentences_embedding)
 
     def greedy_approximation(self, summary_size=100):
         """Greedy approximation for finding the best set of sentences.
@@ -115,24 +139,24 @@ class NewDoc2VecSummarizer:
         while len(C) > 0:
 
             # remove unsuitable items
-            C = [c for c in C
-                 if summary_length + self.sentences[c].length <=
-                 summary_size]
+            C = set(c for c in C
+                    if summary_length + self.sentences[c].length <=
+                    summary_size)
 
             # stop if no scores are to be computed
             if not C:
                 break
 
-            sims = self._average_cosinus_similarities(S | {c} for c in C)
+            sims = [(c, self._average_cosinus_similarity(S | {c})) for c in C]
 
             # select best candidate
-            i, sim = max(enumerate(sims), key=operator.itemgetter(1))
-            best_c = C[i]
-            S.add(best_c)
+            c, sim = max(sims, key=operator.itemgetter(1))
+
+            S.add(c)
             summary_weight = sim
-            summary_length += self.sentences[best_c].length
+            summary_length += self.sentences[c].length
 
             # remove the selected sentence
-            del C[i]
+            C.remove(c)
 
         return summary_weight, S
