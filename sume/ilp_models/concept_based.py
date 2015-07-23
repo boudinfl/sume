@@ -10,17 +10,17 @@
 
 from sume.base import Sentence, State, untokenize
 
-from collections import Counter, defaultdict, deque
+from collections import defaultdict, deque
 
 import os
 import re
 import codecs
-import bisect
 import random
 import sys
 
 import nltk
 import pulp
+
 
 class ConceptBasedILPSummarizer:
     """Concept-based ILP summarization model.

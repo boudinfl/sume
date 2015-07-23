@@ -45,6 +45,7 @@ class Word2VecSummarizer(Summarizer):
             remove_redundancy=remove_redundancy)
         self.topic = []
         self.topic_embedding = None
+        self.topic_embedding_raw = None
         self.embeddings = {}
         self.model = model
         self._build_representations(stemming)
@@ -100,9 +101,11 @@ class Word2VecSummarizer(Summarizer):
                 self.embeddings[s] = np.array([self.model[t]
                                                for t in s.concepts])\
                                        .mean(axis=0)
+                self.topic_embedding_raw = np.array([self.model[t]
+                                                     for t in self.topic])\
+                                             .mean(axis=0)
                 self.topic_embedding = matutils.unitvec(
-                    np.array([self.model[t] for t in self.topic])
-                    .mean(axis=0))
+                    self.topic_embedding_raw)
 
     def _average_cosinus_similarity(self, sentences):
         # here we need to compute a weighted average of sentence embeddings

@@ -16,6 +16,7 @@ import codecs
 
 import nltk
 
+
 class Summarizer(object):
     """Concept-based ILP summarization model.
 
@@ -39,8 +40,8 @@ class Summarizer(object):
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
         self._read_documents(file_extension)
         self._prune_sentences(mininum_sentence_length,
-                             remove_citations,
-                             remove_redundancy)
+                              remove_citations,
+                              remove_redundancy)
 
     def _read_documents(self, file_extension):
         """Read the input files in the given directory.
@@ -77,9 +78,9 @@ class Summarizer(object):
                         self.sentences.append(sentence)
 
     def _prune_sentences(self,
-                        mininum_sentence_length,
-                        remove_citations,
-                        remove_redundancy):
+                         mininum_sentence_length,
+                         remove_citations,
+                         remove_redundancy):
         """Prune the sentences.
 
         Remove the sentences that are shorter than a given length, redundant

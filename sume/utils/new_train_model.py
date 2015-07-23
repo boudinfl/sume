@@ -53,10 +53,6 @@ parser.add_argument('--negative-sampling',
                     type=int,
                     help='Number of negative values to sample to learn the '
                     'softmax.')
-parser.add_argument('--sample',
-                    default=int(10e12),
-                    type=int,
-                    help='Number of examples to limit the corpus to.')
 parser.add_argument('--epoch',
                     default=20,
                     type=int,
@@ -78,8 +74,8 @@ parser_d2v.add_argument('--dbow',
                         'distributed memory to compute paragraph vectors.')
 parser_d2v.add_argument('--dm-concat',
                         action='store_true',
-                        help='Use concatenation of the context vectors instead '
-                        'of averaging.')
+                        help='Use concatenation of the context vectors '
+                        'instead of averaging.')
 
 # Word2Vec arguments
 
@@ -99,9 +95,7 @@ with codecs.open(args.source, 'r', 'utf-8') as f:
         if args.model_type == 'w2v':
             sequences.append(sequence)
         if args.model_type == 'd2v':
-            sequences.append(TaggedDocument(sequences,[i]))
-        if i >= args.sample:
-            break
+            sequences.append(TaggedDocument(sequence, [i]))
 
 print 'info - building model from', i, 'items'
 
@@ -154,7 +148,7 @@ else:
     method = 'sg' if args.sg else 'cbow'
 
 param_output = '{input}-d{dimension}-w{window}-m{min_count}-e{epoch}-a{alpha}'\
-               '-ma{min_alpha}-n{ns}-s{sample}-{method}.{model_type}'.format(
+               '-ma{min_alpha}-n{ns}-{method}.{model_type}'.format(
                    input=os.path.basename(args.source),
                    dimension=args.dimension,
                    window=args.window,
@@ -163,7 +157,6 @@ param_output = '{input}-d{dimension}-w{window}-m{min_count}-e{epoch}-a{alpha}'\
                    alpha=args.alpha,
                    min_alpha=args.min_alpha,
                    ns=args.negative_sampling,
-                   sample=args.sample,
                    method=method,
                    model_type=args.model_type)
 
