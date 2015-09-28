@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
-""" Base structures and functions for the sume module
+""" Base structures and functions for the sume module.
+
+    Base contains the Sentence, LoadFile and State classes.
+
 
     author: florian boudin (florian.boudin@univ-nantes.fr)
     version: 0.1
@@ -8,6 +11,8 @@
 """
 
 import re
+import os
+import codecs
 from collections import Counter
 
 class State:
@@ -56,6 +61,59 @@ class Sentence:
 
         self.length = 0
         """ length of the untokenized sentence. """
+
+class LoadFile(object):
+    """Objects which inherit from this class have read file functions.
+
+    """
+
+    def __init__(self, input_directory):
+        """
+        Args:
+            input_file (str): the path of the input file.
+            use_stems (bool): whether stems should be used instead of words,
+              defaults to False.
+
+        """
+        self.input_directory = input_directory
+        self.sentences = []
+
+    def read_documents(self, file_extension="txt"):
+        """Read the input files in the given directory.
+
+        Load the input files and populate the sentence list. Input files are
+        expected to be in one tokenized sentence per line format.
+
+        Args:
+            file_extension (str): the file extension for input documents,
+              defaults to txt.
+        """
+        for infile in os.listdir(self.input_directory):
+
+            # skip files with wrong extension
+            if not infile.endswith(file_extension):
+                continue
+
+            with codecs.open(self.input_directory + '/' + infile,
+                             'r',
+                             'utf-8') as f:
+
+                # load the sentences
+                lines = f.readlines()
+
+                # loop over sentences
+                for i in range(len(lines)):
+
+                    # split the sentence into tokens
+                    tokens = lines[i].strip().split(' ')
+
+                    # add the sentence
+                    if len(tokens) > 0:
+                        sentence = Sentence(tokens, infile, i)
+                        untokenized_form = untokenize(tokens)
+                        sentence.untokenized_form = untokenized_form
+                        sentence.length = len(untokenized_form.split(' '))
+                        self.sentences.append(sentence)
 
 def untokenize(tokens):
     """Untokenizing a list of tokens. 

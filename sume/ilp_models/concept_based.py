@@ -8,7 +8,7 @@
     date: May 2015
 """
 
-from sume.base import Sentence, State, untokenize
+from sume.base import Sentence, State, untokenize, LoadFile
 
 from collections import defaultdict, deque
 
@@ -21,7 +21,7 @@ import sys
 import nltk
 import pulp
 
-class ConceptBasedILPSummarizer:
+class ConceptBasedILPSummarizer(LoadFile):
     """Concept-based ILP summarization model.
 
     Implementation of (Gillick & Favre, 2009) ILP model for summarization.
@@ -42,43 +42,6 @@ class ConceptBasedILPSummarizer:
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
         self.word_frequencies = defaultdict(int)
         self.w2s = defaultdict(set)
-
-    def read_documents(self, file_extension="txt"):
-        """Read the input files in the given directory.
-
-        Load the input files and populate the sentence list. Input files are
-        expected to be in one tokenized sentence per line format.
-
-        Args:
-            file_extension (str): the file extension for input documents,
-              defaults to txt.
-        """
-        for infile in os.listdir(self.input_directory):
-
-            # skip files with wrong extension
-            if not infile.endswith(file_extension):
-                continue
-
-            with codecs.open(self.input_directory + '/' + infile,
-                             'r',
-                             'utf-8') as f:
-
-                # load the sentences
-                lines = f.readlines()
-
-                # loop over sentences
-                for i in range(len(lines)):
-
-                    # split the sentence into tokens
-                    tokens = lines[i].strip().split(' ')
-
-                    # add the sentence
-                    if len(tokens) > 0:
-                        sentence = Sentence(tokens, infile, i)
-                        untokenized_form = untokenize(tokens)
-                        sentence.untokenized_form = untokenized_form
-                        sentence.length = len(untokenized_form.split(' '))
-                        self.sentences.append(sentence)
 
     def extract_ngrams(self, n=2):
         """Extract the ngrams of words from the input sentences.
