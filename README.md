@@ -1,12 +1,13 @@
 # sume
 
-The sume module is an automatic summarization library written in Python. 
+The sume module is an automatic summarization library written in Python.
 
 ## Description
 
-sume contains the following extraction algorithms :
+sume contains the following extraction algorithms:
 
-  * Concept-based ILP model for summarization ([Gillick & Favre, 2009][GF09])
+  * Concept-based ILP model for summarization
+    [(Gillick & Favre, 2009)](http://www.aclweb.org/anthology/W09-1802)
 
 A typical usage of this module is:
 
@@ -41,13 +42,16 @@ A typical usage of this module is:
     # outputs the summary
     print '\n'.join([s.sentences[j].untokenized_form for j in subset])
 
+## Citing the sume module
+
+If you use sume, please cite the following paper:
+
+  * [Florian Boudin, Hugo Mougard and Benoît Favre, Concept-based Summarization
+    using Integer Linear Programming: From Concept Pruning to Multiple Optimal
+    Solutions, *Proceedings of the 2015 Conference on Empirical Methods in 
+    Natural Language Processing (EMNLP)](http://aclweb.org/anthology/D15-1220).
+
 ## Contributors
 
 * Florian Boudin
 * Hugo Mougard
-
-## References
-
-[GF09]: Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
-        *Proceedings of the NAACL HLT Workshop on Integer Linear Programming for
-        Natural Language Processing*, pages 10–18, 2009.
