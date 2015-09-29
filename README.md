@@ -48,6 +48,6 @@ A typical usage of this module is:
 
 ## References
 
-[GF09]: Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
+[GF09]:Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
         *Proceedings of the NAACL HLT Workshop on Integer Linear Programming for
         Natural Language Processing*, pages 10–18, 2009.
