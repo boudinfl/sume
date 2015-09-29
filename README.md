@@ -6,7 +6,7 @@ The sume module is an automatic summarization library written in Python.
 
 sume contains the following extraction algorithms :
 
-  * Concept-based ILP model for summarization [(Gillick & Favre, 2009)][GF09]
+  * [Concept-based ILP model for summarization ([Gillick & Favre, 2009][GF09])
 
 A typical usage of this module is:
 
