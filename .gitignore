@@ -2,3 +2,5 @@
 *.pyc
 
 sume/ilp_models/dev.py
+
+sume/models/dev.py

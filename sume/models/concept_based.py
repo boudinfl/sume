@@ -22,9 +22,14 @@ import nltk
 import pulp
 
 class ConceptBasedILPSummarizer(LoadFile):
-    """Concept-based ILP summarization model.
+    """Implementation of the concept-based ILP model for summarization.
 
-    Implementation of (Gillick & Favre, 2009) ILP model for summarization.
+    The original algorithm was published and described in:
+
+      * Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
+        *Proceedings of the NAACL HLT Workshop on Integer Linear Programming for
+        Natural Language Processing*, pages 10–18, 2009.
+        
     """
     def __init__(self, input_directory):
         """

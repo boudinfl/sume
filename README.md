@@ -1,11 +1,14 @@
 # sume
 
+The sume module is an automatic summarization library written in Python. 
+
 ## Description
 
-Implementation of the concept-based ILP model for summarization. The original
-algorithm was published and described in:
+sume contains the following extraction algorithms :
 
-  * Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
+  * Concept-based ILP model for summarization as described in:
+
+    Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
     *Proceedings of the NAACL HLT Workshop on Integer Linear Programming for
     Natural Language Processing*, pages 10–18, 2009.
 
@@ -17,8 +20,8 @@ A typical usage of this module is:
     # files are expected to be in one tokenized sentence per line format.
     dir_path = "/tmp/"
 
-    # create the summarizer
-    s = sume.ilp_models.ConceptBasedILPSummarizer(dir_path)
+    # create a summarizer, here a concept-based ILP model
+    s = sume.models.ConceptBasedILPSummarizer(dir_path)
 
     # load documents with extension 'txt'
     s.read_documents(file_extension="txt")
