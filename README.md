@@ -49,7 +49,7 @@ If you use sume, please cite the following paper:
   * [Florian Boudin, Hugo Mougard and Benoît Favre, Concept-based Summarization
     using Integer Linear Programming: From Concept Pruning to Multiple Optimal
     Solutions, *Proceedings of the 2015 Conference on Empirical Methods in 
-    Natural Language Processing (EMNLP)](http://aclweb.org/anthology/D15-1220).
+    Natural Language Processing (EMNLP)*](http://aclweb.org/anthology/D15-1220).
 
 ## Contributors
 
