@@ -33,7 +33,7 @@ parser.add_argument('-o',
                     'automatically.',
                     required=True)
 parser.add_argument('--dimension',
-                    default=100,
+                    default=300,
                     type=int,
                     help='Dimensionality of the vectors.')
 parser.add_argument('--window',
@@ -54,7 +54,7 @@ parser.add_argument('--negative-sampling',
                     help='Number of negative values to sample to learn the '
                     'softmax.')
 parser.add_argument('--epoch',
-                    default=20,
+                    default=10,
                     type=int,
                     help='Number of passes through the data.')
 parser.add_argument('--alpha',
@@ -62,7 +62,7 @@ parser.add_argument('--alpha',
                     type=float,
                     help='Starting learning rate.')
 parser.add_argument('--min-alpha',
-                    default=0.001,
+                    default=0.005,
                     type=float,
                     help='Final learning rate.')
 

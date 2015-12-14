@@ -43,11 +43,11 @@ class Word2VecSummarizer(Summarizer):
             mininum_sentence_length=mininum_sentence_length,
             remove_citations=remove_citations,
             remove_redundancy=remove_redundancy)
+        self.model = model
         self.topic = []
         self.topic_embedding = None
         self.topic_embedding_raw = None
         self.embeddings = {}
-        self.model = model
         self._build_representations(stemming)
         self._filter_out_of_vocabulary()
         self._build_embeddings()
