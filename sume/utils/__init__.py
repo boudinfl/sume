@@ -1,2 +1,0 @@
-from similarity_server import Server
-from embedding_inference import infer_doc2vec, infer_new_doc2vec, infer_patched_word2vec

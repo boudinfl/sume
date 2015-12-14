@@ -9,7 +9,6 @@
 """
 
 from sume.ilp_models import Summarizer
-from sume.utils import infer_new_doc2vec
 
 import operator
 import re
@@ -86,15 +85,30 @@ class Doc2VecSummarizer(Summarizer):
 
         self.topic = [u for u in self.topic if u in self.model.vocab]
 
+    def _infer_vectors(self,
+                      sequences,
+                      alpha=0.1,
+                      min_alpha=0.001,
+                      epochs=5):
+        """Inference step of paragraph2vec
+        Args:
+            sequences (list): the sequences to embed
+        """
+        return [self.model.infer_vector(s,
+                                        alpha=alpha,
+                                        min_alpha=min_alpha,
+                                        steps=epochs)
+                for s in sequences]
+
     def _average_cosinus_similarities(self, summaries):
         if self.topic_embedding is None:
             self.topic_embedding = matutils.unitvec(
-                infer_new_doc2vec(self.model, [self.topic])[0])
+                self._infer_vectors([self.topic])[0])
         sequences = [[concept
                       for sentence in summary
                       for concept in self.sentences[sentence].concepts]
                      for summary in summaries]
-        raw_embeddings = infer_new_doc2vec(self.model, sequences)
+        raw_embeddings = self._infer_vectors(sequences)
         embeddings = map(matutils.unitvec, raw_embeddings)
         return [np.dot(self.topic_embedding, embedding)
                 for embedding in embeddings]

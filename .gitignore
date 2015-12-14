@@ -7,4 +7,4 @@ sume/ilp_models/dev.py
 /run*.py
 /models
 /data
-word2vec/word2vec
+
