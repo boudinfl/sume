@@ -2,10 +2,6 @@
 """Base structures and functions for the sume module.
 
 Base contains the Sentence, LoadFile and State classes.
-
-author: florian boudin (florian.boudin@univ-nantes.fr)
-version: 0.1
-date: Nov. 2014
 """
 
 from __future__ import unicode_literals

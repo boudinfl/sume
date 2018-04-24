@@ -1,12 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Concept-based ILP summarization methods.
-
-authors: Florian Boudin (florian.boudin@univ-nantes.fr)
-         Hugo Mougard (hugo.mougard@univ-nantes.fr)
-version: 0.2
-date: May 2015
-"""
+"""Concept-based ILP summarization methods."""
 
 from collections import defaultdict, deque
 

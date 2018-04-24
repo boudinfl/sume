@@ -1,10 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""Reconstruct the citations from the DUC/TAC files.
-
-author: florian boudin (florian.boudin@univ-nantes.fr)
-"""
+"""Reconstruct the citations from the DUC/TAC files."""
 
 from __future__ import print_function
 

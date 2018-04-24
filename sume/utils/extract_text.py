@@ -1,10 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""Extract the textual content from the DUC/TAC files.
-
-author: florian boudin (florian.boudin@univ-nantes.fr)
-"""
+"""Extract the textual content from the DUC/TAC files."""
 
 import re
 import sys
