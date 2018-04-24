@@ -24,6 +24,8 @@ import sys
 from shutil import rmtree
 
 from setuptools import find_packages, setup, Command
+from setuptools.command.install import install
+import subprocess
 
 # Package meta-data.
 NAME = 'sume'
@@ -41,7 +43,8 @@ INSTALL_REQUIRES = [
     'gensim',
     'nltk',
     'numpy',
-    'wmd'
+    'wmd',
+    'fasttext'
 ]
 
 TEST_REQUIRES = [
@@ -91,6 +94,16 @@ class UploadCommand(Command):
         sys.exit()
 
 
+class InstallCommand(install):
+    """Hack to circumvent fasttext and wmd install limitations."""
+
+    def run(self):
+        """Install numpy and Cython before the rest."""
+        subprocess.call(['pip', 'install', 'numpy'])
+        subprocess.call(['pip', 'install', 'Cython'])
+        super().run()
+
+
 # Where the magic happens:
 setup(
     name=NAME,
@@ -127,5 +140,6 @@ setup(
     ],
     cmdclass={
         'upload': UploadCommand,
+        'install': InstallCommand
     },
 )
