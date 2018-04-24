@@ -555,13 +555,11 @@ class ConceptBasedILPSummarizer(LoadFile):
 
         # INTEGRITY CONSTRAINTS
         for i in range(C):
+            prob += sum(s[j] for j in range(S)
+                        if concepts[i] in self.sentences[j].concepts) >= c[i]
             for j in range(S):
                 if concepts[i] in self.sentences[j].concepts:
                     prob += s[j] <= c[i]
-
-        for i in range(C):
-            prob += sum(s[j] for j in range(S)
-                        if concepts[i] in self.sentences[j].concepts) >= c[i]
 
         # WORD INTEGRITY CONSTRAINTS
         if unique:
