@@ -1,25 +1,24 @@
 # -*- coding: utf-8 -*-
 
-""" Concept-based ILP summarization methods.
+"""Concept-based ILP summarization methods.
 
-    authors: Florian Boudin (florian.boudin@univ-nantes.fr)
-             Hugo Mougard (hugo.mougard@univ-nantes.fr)
-    version: 0.2
-    date: May 2015
+authors: Florian Boudin (florian.boudin@univ-nantes.fr)
+         Hugo Mougard (hugo.mougard@univ-nantes.fr)
+version: 0.2
+date: May 2015
 """
-
-from sume.base import Sentence, State, untokenize, LoadFile
 
 from collections import defaultdict, deque
 
-import os
-import re
-import codecs
 import random
+import re
 import sys
 
 import nltk
 import pulp
+
+from sume.base import State, LoadFile
+
 
 class ConceptBasedILPSummarizer(LoadFile):
     """Implementation of the concept-based ILP model for summarization.
@@ -29,10 +28,12 @@ class ConceptBasedILPSummarizer(LoadFile):
       * Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
         *Proceedings of the NAACL HLT Workshop on Integer Linear Programming for
         Natural Language Processing*, pages 10–18, 2009.
-        
+
     """
+
     def __init__(self, input_directory):
-        """
+        """Construct a concept based ILP summarizer.
+
         Args:
             input_directory (str): the directory from which text documents to
               be summarized are loaded.
@@ -83,9 +84,7 @@ class ConceptBasedILPSummarizer(LoadFile):
                 self.sentences[i].concepts.append(' '.join(ngram))
 
     def compute_document_frequency(self):
-        """Compute the document frequency of each concept.
-
-        """
+        """Compute the document frequency of each concept."""
         for i in range(len(self.sentences)):
 
             # for each concept
@@ -101,11 +100,10 @@ class ConceptBasedILPSummarizer(LoadFile):
             self.weights[concept] = len(self.weights[concept])
 
     def compute_word_frequency(self):
-        """Compute the frequency of each word in the set of documents. """
-
+        """Compute the frequency of each word in the set of documents."""
         for i, sentence in enumerate(self.sentences):
             for token in sentence.tokens:
-                t = token.lower() 
+                t = token.lower()
                 if not re.search('[a-zA-Z0-9]', t) or t in self.stoplist:
                     continue
                 t = self.stemmer.stem(t)
@@ -214,15 +212,13 @@ class ConceptBasedILPSummarizer(LoadFile):
                                           if c in self.weights]
 
     def compute_c2s(self):
-        """Compute the inverted concept to sentences dictionary. """
-
+        """Compute the inverted concept to sentences dictionary."""
         for i, sentence in enumerate(self.sentences):
             for concept in sentence.concepts:
                 self.c2s[concept].add(i)
 
     def compute_concept_sets(self):
         """Compute the concept sets for each sentence."""
-
         for i, sentence in enumerate(self.sentences):
             for concept in sentence.concepts:
                 self.concept_sets[i] |= {concept}
@@ -317,8 +313,7 @@ class ConceptBasedILPSummarizer(LoadFile):
                     iterations=100,
                     mutation_size=2,
                     mutation_group=True):
-        """Greedy approximation of the ILP model with a tabu search
-          meta-heuristic.
+        """Greedy ILP model approximation with a tabu search meta-heuristic.
 
         Args:
             summary_size (int): the maximum size in words of the summary,
@@ -360,7 +355,7 @@ class ConceptBasedILPSummarizer(LoadFile):
 
         best_subset, best_score = None, 0
         state = State()
-        for i in xrange(iterations):
+        for i in range(iterations):
             queue = deque([], memory_size)
             # greedily select sentences
             state = self.select_sentences(summary_size,
@@ -458,8 +453,7 @@ class ConceptBasedILPSummarizer(LoadFile):
         return state
 
     def unselect_sentences(self, weights, state, to_remove):
-        """Sentence ``un-selector'' (reverse operation of the
-          select_sentences method).
+        """Reverse operation of the select_sentences method.
 
         Args:
             weights (dictionary): the sentence weights dictionary. This
@@ -551,7 +545,7 @@ class ConceptBasedILPSummarizer(LoadFile):
 
         # OBJECTIVE FUNCTION
         prob += sum(w[concepts[i]] * c[i] for i in range(C))
-               
+
         if unique:
             prob += sum(w[concepts[i]] * c[i] for i in range(C)) + \
                     10e-6 * sum(f[tokens[k]] * t[k] for k in range(T))

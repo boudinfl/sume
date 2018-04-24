@@ -1,19 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import re
+"""Reconstruct the citations from the DUC/TAC files.
+
+author: florian boudin (florian.boudin@univ-nantes.fr)
+"""
+
+from __future__ import print_function
+
 import sys
 import codecs
 
-""" Reconstruct the citations from the DUC/TAC files.
-
-    author: florian boudin (florian.boudin@univ-nantes.fr)
-"""
 
 # open the input file
 with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
 
-    # read the lines from the input file 
+    # read the lines from the input file
     lines = f.readlines()
 
     stacked_lines = []
@@ -41,11 +43,10 @@ with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
                     endings.append(remp_char)
                 else:
                     openings.append(remp_char)
-                print 'info - error with quotation marks at', sys.argv[1]
-                print 'info - correcting, modifying with ', remp_char
+                print('info - error with quotation marks at', sys.argv[1])
+                print('info - correcting, modifying with ', remp_char)
                 tokens[i] = remp_char
                 line = ' '.join(tokens)
-
 
         if len(openings) == len(endings):
             if in_citation:

@@ -1,24 +1,24 @@
 # -*- coding: utf-8 -*-
+"""Base structures and functions for the sume module.
 
-""" Base structures and functions for the sume module.
+Base contains the Sentence, LoadFile and State classes.
 
-    Base contains the Sentence, LoadFile and State classes.
-
-
-    author: florian boudin (florian.boudin@univ-nantes.fr)
-    version: 0.1
-    date: Nov. 2014
+author: florian boudin (florian.boudin@univ-nantes.fr)
+version: 0.1
+date: Nov. 2014
 """
 
-import re
-import os
-import codecs
 from collections import Counter
 
-class State:
-    """ State class
+import codecs
+import os
+import re
 
-    Internal class used as a structure to keep track of the search state in 
+
+class State(object):
+    """State class.
+
+    Internal class used as a structure to keep track of the search state in
     the tabu_search method.
 
     Args:
@@ -26,24 +26,30 @@ class State:
         concepts (Counter): a set of concepts for the subset
         length (int): the length in words
         score (int): the score for the subset
+
     """
+
     def __init__(self):
+        """Construct a State object."""
         self.subset = set()
         self.concepts = Counter()
         self.length = 0
         self.score = 0
 
+
 class Sentence:
     """The sentence data structure.
 
-    Args: 
+    Args:
         tokens (list of str): the list of word tokens.
         doc_id (str): the identifier of the document from which the sentence
           comes from.
         position (int): the position of the sentence in the source document.
-    """
-    def __init__(self, tokens, doc_id, position):
 
+    """
+
+    def __init__(self, tokens, doc_id, position):
+        """Construct a sentence."""
         self.tokens = tokens
         """ tokens as a list. """
 
@@ -62,13 +68,13 @@ class Sentence:
         self.length = 0
         """ length of the untokenized sentence. """
 
-class LoadFile(object):
-    """Objects which inherit from this class have read file functions.
 
-    """
+class LoadFile(object):
+    """Objects which inherit from this class have read file functions."""
 
     def __init__(self, input_directory):
-        """
+        """Construct a file loader.
+
         Args:
             input_file (str): the path of the input file.
             use_stems (bool): whether stems should be used instead of words,
@@ -87,6 +93,7 @@ class LoadFile(object):
         Args:
             file_extension (str): the file extension for input documents,
               defaults to txt.
+
         """
         for infile in os.listdir(self.input_directory):
 
@@ -115,8 +122,9 @@ class LoadFile(object):
                         sentence.length = len(untokenized_form.split(' '))
                         self.sentences.append(sentence)
 
+
 def untokenize(tokens):
-    """Untokenizing a list of tokens. 
+    """Untokenize a list of tokens.
 
     Args:
         tokens (list of str): the list of tokens to untokenize.

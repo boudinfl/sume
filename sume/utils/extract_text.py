@@ -1,33 +1,35 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+"""Extract the textual content from the DUC/TAC files.
+
+author: florian boudin (florian.boudin@univ-nantes.fr)
+"""
+
 import re
 import sys
 import codecs
 
-""" Extract the textual content from the DUC/TAC files.
-
-    author: florian boudin (florian.boudin@univ-nantes.fr)
-"""
 
 def remove_byline(text):
-    """ Remove the newswire byline from the textual content.
+    """Remove the newswire byline from the textual content.
 
-        Examples of headers are:
-            WASHINGTON _ 
-            NEW YORK _ 
-            AMHERST, N.Y. _ 
-            DAR ES SALAAM, Tanzania _ 
-            LAUSANNE, Switzerland (AP) _ 
-            SEOUL, South Korea (AP) _ 
-            BRUSSELS, Belgium (AP) - 
-            INNSBRUCK, Austria (AP) -- 
-            PORT-AU-PRINCE, Haiti (AP) _ 
-            BEIJING &UR; &LR; _ 
+    Examples of headers are:
+        WASHINGTON _
+        NEW YORK _
+        AMHERST, N.Y. _
+        DAR ES SALAAM, Tanzania _
+        LAUSANNE, Switzerland (AP) _
+        SEOUL, South Korea (AP) _
+        BRUSSELS, Belgium (AP) -
+        INNSBRUCK, Austria (AP) --
+        PORT-AU-PRINCE, Haiti (AP) _
+        BEIJING &UR; &LR; _
     """
     text = re.sub(u'^[A-Z][\-\,\.\w\s]+ (\([A-Z]+\) )?(_|-|--) ', '', text)
 
     return text
+
 
 # open the input file
 with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
@@ -78,7 +80,3 @@ with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
     # write the extracted textual content into a file
     with codecs.open(sys.argv[2], 'w', 'utf-8') as w:
         w.write(content)
-
-
-
-
