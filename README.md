@@ -1,27 +1,41 @@
 # sume
 
-The sume module is an automatic summarization library written in Python.
+The **sume** module is an automatic summarization library written in Python.
+
+## Installation
+
+The python module is available on PyPi. To install it, you can use:
+
+    pip install sume
+
+**sume** also requires a linear solver on the path, such as `glpsol` from GLPK.
+Installation may vary. For a debian/ubuntu system, you can use:
+
+    sudo apt-get install glpk-utils
 
 ## Description
 
-sume contains the following extraction algorithms:
+**sume** contains the following extraction algorithms:
 
-  * Concept-based ILP model for summarization
-    [(Gillick & Favre, 2009)](http://www.aclweb.org/anthology/W09-1802)
+- Concept-based ILP model for summarization [(Gillick & Favre, 2009)][gf]
 
 A typical usage of this module is:
 
-    import sume
+    import nltk
+    import sume.models.concept_based
 
     # directory from which text documents to be summarized are loaded. Input
     # files are expected to be in one tokenized sentence per line format.
     dir_path = "/tmp/"
 
-    # create a summarizer, here a concept-based ILP model
-    s = sume.models.ConceptBasedILPSummarizer(dir_path)
+    # download stopwords from nltk (required by sume summarizers).
+    nltk.download('stopwords')
 
-    # load documents with extension 'txt'
-    s.read_documents(file_extension="txt")
+    # create a summarizer, here a concept-based ILP model
+    s = sume.models.concept_based.ConceptBasedILPSummarizer(dir_path)
+
+    # load documents (with extension '.txt' by default)
+    s.read_documents()
 
     # compute the parameters needed by the model
     # extract bigrams as concepts
@@ -46,12 +60,16 @@ A typical usage of this module is:
 
 If you use sume, please cite the following paper:
 
-  * [Florian Boudin, Hugo Mougard and Benoît Favre, Concept-based Summarization
-    using Integer Linear Programming: From Concept Pruning to Multiple Optimal
-    Solutions, *Proceedings of the 2015 Conference on Empirical Methods in 
-    Natural Language Processing (EMNLP)*](http://aclweb.org/anthology/D15-1220).
+> [Florian Boudin, Hugo Mougard and Benoît Favre, Concept-based Summarization
+using Integer Linear Programming: From Concept Pruning to Multiple Optimal
+Solutions, *Proceedings of the 2015 Conference on Empirical Methods in
+Natural Language Processing (EMNLP)*][bmf].
 
 ## Contributors
 
-* Florian Boudin
-* Hugo Mougard
+- Florian Boudin
+- Hugo Mougard
+
+[gf]: http://www.aclweb.org/anthology/W09-1802
+
+[bmf]: http://aclweb.org/anthology/D15-1220

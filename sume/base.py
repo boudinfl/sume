@@ -1,24 +1,22 @@
 # -*- coding: utf-8 -*-
+"""Base structures and functions for the sume module.
 
-""" Base structures and functions for the sume module.
-
-    Base contains the Sentence, LoadFile and State classes.
-
-
-    author: florian boudin (florian.boudin@univ-nantes.fr)
-    version: 0.1
-    date: Nov. 2014
+Base contains the Sentence, LoadFile and State classes.
 """
 
-import re
-import os
-import codecs
+from __future__ import unicode_literals
+
 from collections import Counter
 
-class State:
-    """ State class
+import codecs
+import os
+import re
 
-    Internal class used as a structure to keep track of the search state in 
+
+class State(object):
+    """State class.
+
+    Internal class used as a structure to keep track of the search state in
     the tabu_search method.
 
     Args:
@@ -26,24 +24,30 @@ class State:
         concepts (Counter): a set of concepts for the subset
         length (int): the length in words
         score (int): the score for the subset
+
     """
+
     def __init__(self):
+        """Construct a State object."""
         self.subset = set()
         self.concepts = Counter()
         self.length = 0
         self.score = 0
 
-class Sentence:
+
+class Sentence(object):
     """The sentence data structure.
 
-    Args: 
+    Args:
         tokens (list of str): the list of word tokens.
         doc_id (str): the identifier of the document from which the sentence
           comes from.
         position (int): the position of the sentence in the source document.
-    """
-    def __init__(self, tokens, doc_id, position):
 
+    """
+
+    def __init__(self, tokens, doc_id, position):
+        """Construct a sentence."""
         self.tokens = tokens
         """ tokens as a list. """
 
@@ -62,13 +66,13 @@ class Sentence:
         self.length = 0
         """ length of the untokenized sentence. """
 
-class LoadFile(object):
-    """Objects which inherit from this class have read file functions.
 
-    """
+class LoadFile(object):
+    """Objects which inherit from this class have read file functions."""
 
     def __init__(self, input_directory):
-        """
+        """Construct a file loader.
+
         Args:
             input_file (str): the path of the input file.
             use_stems (bool): whether stems should be used instead of words,
@@ -78,7 +82,7 @@ class LoadFile(object):
         self.input_directory = input_directory
         self.sentences = []
 
-    def read_documents(self, file_extension="txt"):
+    def read_documents(self, file_extension=".txt"):
         """Read the input files in the given directory.
 
         Load the input files and populate the sentence list. Input files are
@@ -86,7 +90,8 @@ class LoadFile(object):
 
         Args:
             file_extension (str): the file extension for input documents,
-              defaults to txt.
+              defaults to .txt.
+
         """
         for infile in os.listdir(self.input_directory):
 
@@ -94,18 +99,15 @@ class LoadFile(object):
             if not infile.endswith(file_extension):
                 continue
 
-            with codecs.open(self.input_directory + '/' + infile,
+            with codecs.open(os.path.join(self.input_directory, infile),
                              'r',
                              'utf-8') as f:
 
-                # load the sentences
-                lines = f.readlines()
-
                 # loop over sentences
-                for i in range(len(lines)):
+                for i, line in enumerate(f.readlines()):
 
                     # split the sentence into tokens
-                    tokens = lines[i].strip().split(' ')
+                    tokens = line.strip().split(' ')
 
                     # add the sentence
                     if len(tokens) > 0:
@@ -115,8 +117,9 @@ class LoadFile(object):
                         sentence.length = len(untokenized_form.split(' '))
                         self.sentences.append(sentence)
 
+
 def untokenize(tokens):
-    """Untokenizing a list of tokens. 
+    """Untokenize a list of tokens.
 
     Args:
         tokens (list of str): the list of tokens to untokenize.
@@ -125,26 +128,26 @@ def untokenize(tokens):
         a string
 
     """
-    text = u' '.join(tokens)
-    text = re.sub(u"\s+", u" ", text.strip())
-    text = re.sub(u" ('[a-z]) ", u"\g<1> ", text)
-    text = re.sub(u" ([\.;,-]) ", u"\g<1> ", text)
-    text = re.sub(u" ([\.;,-?!])$", u"\g<1>", text)
-    text = re.sub(u" _ (.+) _ ", u" _\g<1>_ ", text)
-    text = re.sub(u" \$ ([\d\.]+) ", u" $\g<1> ", text)
-    text = text.replace(u" ' ", u"' ")
-    text = re.sub(u"([\W\s])\( ", u"\g<1>(", text)
-    text = re.sub(u" \)([\W\s])", u")\g<1>", text)
-    text = text.replace(u"`` ", u"``")
-    text = text.replace(u" ''", u"''")
-    text = text.replace(u" n't", u"n't")
-    text = re.sub(u'(^| )" ([^"]+) "( |$)', u'\g<1>"\g<2>"\g<3>', text)
+    text = ' '.join(tokens)
+    text = re.sub(r"\s+", r" ", text.strip())
+    text = re.sub(r" ('[a-z]) ", "\g<1> ", text)
+    text = re.sub(r" ([\.;,-]) ", "\g<1> ", text)
+    text = re.sub(r" ([\.;,-?!])$", "\g<1>", text)
+    text = re.sub(r" _ (.+) _ ", " _\g<1>_ ", text)
+    text = re.sub(r" \$ ([\d\.]+) ", " $\g<1> ", text)
+    text = text.replace(" ' ", "' ")
+    text = re.sub(r"([\W\s])\( ", "\g<1>(", text)
+    text = re.sub(r" \)([\W\s])", ")\g<1>", text)
+    text = text.replace("`` ", "``")
+    text = text.replace(" ''", "''")
+    text = text.replace(" n't", "n't")
+    text = re.sub(r'(^| )" ([^"]+) "( |$)', '\g<1>"\g<2>"\g<3>', text)
 
     # times
-    text = re.sub('(\d+) : (\d+ [ap]\.m\.)', '\g<1>:\g<2>', text)
+    text = re.sub(r'(\d+) : (\d+ [ap]\.m\.)', '\g<1>:\g<2>', text)
 
-    text = re.sub('^" ', '"', text)
-    text = re.sub(' "$', '"', text)
-    text = re.sub(u"\s+", u" ", text.strip())
+    text = re.sub(r'^" ', '"', text)
+    text = re.sub(r' "$', '"', text)
+    text = re.sub(r"\s+", " ", text.strip())
 
     return text
