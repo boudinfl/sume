@@ -2,6 +2,17 @@
 
 The **sume** module is an automatic summarization library written in Python.
 
+## Installation
+
+The python module is available on PyPi. To install it, you can use:
+
+    pip install sume
+
+**sume** also requires a linear solver on the path, such as `glpsol` from GLPK.
+Installation may vary. For a debian/ubuntu system, you can use:
+
+    sudo apt-get install glpk-utils
+
 ## Description
 
 **sume** contains the following extraction algorithms:
@@ -10,14 +21,18 @@ The **sume** module is an automatic summarization library written in Python.
 
 A typical usage of this module is:
 
-    import sume
+    import nltk
+    import sume.models.concept_based
 
     # directory from which text documents to be summarized are loaded. Input
     # files are expected to be in one tokenized sentence per line format.
     dir_path = "/tmp/"
 
+    # download stopwords from nltk (required by sume summarizers).
+    nltk.download('stopwords')
+
     # create a summarizer, here a concept-based ILP model
-    s = sume.models.ConceptBasedILPSummarizer(dir_path)
+    s = sume.models.concept_based.ConceptBasedILPSummarizer(dir_path)
 
     # load documents with extension 'txt'
     s.read_documents(file_extension="txt")
