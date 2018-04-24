@@ -4,61 +4,75 @@
 """Reconstruct the citations from the DUC/TAC files."""
 
 from __future__ import print_function
+from __future__ import unicode_literals
 
+import argparse
 import sys
 import codecs
 
 
-# open the input file
-with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
+def main():
+    """Entry point."""
+    parser = argparse.ArgumentParser(
+        description='Extract the textual content from the DUC/TAC files.')
+    parser.add_argument('input', help='input file path')
+    parser.add_argument('output', help='output file path')
+    args = parser.parse_args()
 
-    # read the lines from the input file
-    lines = f.readlines()
+    # open the input file
+    with codecs.open(args.input, 'r', 'utf-8') as f:
 
-    stacked_lines = []
-    in_citation = False
+        # read the lines from the input file
+        lines = f.readlines()
 
-    openings = []
-    endings = []
+        stacked_lines = []
+        in_citation = False
 
-    # for each line
-    for line in lines:
+        openings = []
+        endings = []
 
-        line = line.strip()
-        tokens = line.split(' ')
+        # for each line
+        for line in lines:
 
-        for i in range(len(tokens)):
-            token = tokens[i]
-            if token == u"``":
-                openings.append(token)
-            if token == u"''":
-                endings.append(token)
-            if token == u'"':
-                remp_char = u'``'
-                if len(openings) > len(endings):
-                    remp_char = u"''"
-                    endings.append(remp_char)
+            line = line.strip()
+            tokens = line.split(' ')
+
+            for i in range(len(tokens)):
+                token = tokens[i]
+                if token == "``":
+                    openings.append(token)
+                if token == "''":
+                    endings.append(token)
+                if token == '"':
+                    remp_char = '``'
+                    if len(openings) > len(endings):
+                        remp_char = "''"
+                        endings.append(remp_char)
+                    else:
+                        openings.append(remp_char)
+                    print('info - error with quotation marks at', sys.argv[1])
+                    print('info - correcting, modifying with ', remp_char)
+                    tokens[i] = remp_char
+                    line = ' '.join(tokens)
+
+            if len(openings) == len(endings):
+                if in_citation:
+                    stacked_lines[-1] = stacked_lines[-1] + ' ' + line
                 else:
-                    openings.append(remp_char)
-                print('info - error with quotation marks at', sys.argv[1])
-                print('info - correcting, modifying with ', remp_char)
-                tokens[i] = remp_char
-                line = ' '.join(tokens)
+                    stacked_lines.append(line)
+                in_citation = False
 
-        if len(openings) == len(endings):
-            if in_citation:
-                stacked_lines[-1] = stacked_lines[-1] + ' ' + line
             else:
-                stacked_lines.append(line)
-            in_citation = False
+                if in_citation:
+                    stacked_lines[-1] = stacked_lines[-1] + ' ' + line
+                else:
+                    stacked_lines.append(line)
+                    in_citation = True
 
-        else:
-            if in_citation:
-                stacked_lines[-1] = stacked_lines[-1] + ' ' + line
-            else:
-                stacked_lines.append(line)
-                in_citation = True
+        # write the reconstructed file
+        with codecs.open(args.output, 'w', 'utf-8') as w:
+            w.write('\n'.join(stacked_lines))
 
-    # write the reconstructed file
-    with codecs.open(sys.argv[2], 'w', 'utf-8') as w:
-        w.write('\n'.join(stacked_lines))
+
+if __name__ == '__main__':
+    main()
