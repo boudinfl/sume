@@ -2,6 +2,8 @@
 
 """Concept-based ILP summarization methods."""
 
+from __future__ import unicode_literals
+
 from collections import defaultdict, deque
 
 import random
@@ -19,9 +21,9 @@ class ConceptBasedILPSummarizer(LoadFile):
 
     The original algorithm was published and described in:
 
-      * Dan Gillick and Benoit Favre, A Scalable Global Model for Summarization,
-        *Proceedings of the NAACL HLT Workshop on Integer Linear Programming for
-        Natural Language Processing*, pages 10–18, 2009.
+      * Dan Gillick and Benoit Favre, A Scalable Global Model for
+        Summarization, *Proceedings of the NAACL HLT Workshop on Integer Linear
+        Programming for Natural Language Processing*, pages 10–18, 2009.
 
     """
 
@@ -62,7 +64,7 @@ class ConceptBasedILPSummarizer(LoadFile):
                     ngram.append(sentence.tokens[k].lower())
 
                 # do not consider ngrams containing punctuation marks
-                marks = [t for t in ngram if not re.search('[a-zA-Z0-9]', t)]
+                marks = [t for t in ngram if not re.search(r'[a-zA-Z0-9]', t)]
                 if len(marks) > 0:
                     continue
 
@@ -98,7 +100,7 @@ class ConceptBasedILPSummarizer(LoadFile):
         for i, sentence in enumerate(self.sentences):
             for token in sentence.tokens:
                 t = token.lower()
-                if not re.search('[a-zA-Z0-9]', t) or t in self.stoplist:
+                if not re.search(r'[a-zA-Z0-9]', t) or t in self.stoplist:
                     continue
                 t = self.stemmer.stem(t)
                 self.w2s[t].add(i)
@@ -134,13 +136,13 @@ class ConceptBasedILPSummarizer(LoadFile):
             # prune citations
             first_token, last_token = sentence.tokens[0], sentence.tokens[-1]
             if remove_citations and \
-               (first_token == u"``" or first_token == u'"') and \
-               (last_token == u"''" or first_token == u'"'):
+               (first_token == "``" or first_token == '"') and \
+               (last_token == "''" or first_token == '"'):
                 continue
 
             # prune ___ said citations
             # if remove_citations and \
-            #     (sentence.tokens[0]==u"``" or sentence.tokens[0]==u'"') and \
+            #     (sentence.tokens[0]=="``" or sentence.tokens[0]=='"') and \
             #     re.search('(?i)(''|") \w{,30} (said|reported|told)\.$',
             #               sentence.untokenized_form):
             #     continue
