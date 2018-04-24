@@ -1,0 +1,2 @@
+And this file ( file 2 ) would contain another sentence .
+And yet another one .

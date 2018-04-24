@@ -27,10 +27,7 @@ INSTALL_REQUIRES = [
 ]
 
 TEST_REQUIRES = [
-    'PuLP==1.5.9',
-    'gensim==0.11.1-1',
-    'nltk==3.0.2',
-    'numpy==1.9.2',
+    'pytest'
 ]
 
 here = os.path.abspath(os.path.dirname(__file__))

@@ -1,0 +1,3 @@
+This could be a news file ( file 1 ) .
+Where a sentence is put on each line .
+And words are tokenized with spaces in between .

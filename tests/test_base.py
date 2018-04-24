@@ -1,4 +1,14 @@
+from __future__ import unicode_literals
+
+
 import sume.base
+
+
+def test_load_file(shared_datadir):
+    path = str((shared_datadir / 'cluster').resolve())
+    lf = sume.base.LoadFile(path)
+    lf.read_documents()
+    assert len(lf.sentences) == 9
 
 
 def test_untokenize():
