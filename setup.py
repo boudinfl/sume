@@ -20,10 +20,10 @@ PYTHON_REQUIRES = '>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*'
 
 # What packages are required for this module to be executed?
 INSTALL_REQUIRES = [
-    'PuLP==1.5.9',
-    'gensim==0.11.1-1',
-    'nltk==3.0.2',
-    'numpy==1.9.2',
+    'PuLP',
+    'gensim',
+    'nltk',
+    'numpy',
 ]
 
 TEST_REQUIRES = [
