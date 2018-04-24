@@ -34,8 +34,8 @@ A typical usage of this module is:
     # create a summarizer, here a concept-based ILP model
     s = sume.models.concept_based.ConceptBasedILPSummarizer(dir_path)
 
-    # load documents with extension 'txt'
-    s.read_documents(file_extension="txt")
+    # load documents (with extension '.txt' by default)
+    s.read_documents()
 
     # compute the parameters needed by the model
     # extract bigrams as concepts
