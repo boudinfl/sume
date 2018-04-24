@@ -15,7 +15,7 @@ URL = 'https://github.com/boudinfl/sume'
 EMAIL = 'florian.boudin@univ-nantes.fr'
 AUTHOR = 'Florian Boudin'
 VERSION = '2.0'
-PYTHON_REQUIRES = '>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*'
+PYTHON_REQUIRES = '>=3.4'
 
 
 # What packages are required for this module to be executed?
@@ -24,6 +24,7 @@ INSTALL_REQUIRES = [
     'gensim',
     'nltk',
     'numpy',
+    'wmd'
 ]
 
 TEST_REQUIRES = [
@@ -100,8 +101,6 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',

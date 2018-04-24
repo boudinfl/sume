@@ -2,8 +2,6 @@
 
 """Extract the textual content from the DUC/TAC files."""
 
-from __future__ import unicode_literals
-
 import argparse
 import codecs
 import re

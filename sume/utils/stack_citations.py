@@ -2,9 +2,6 @@
 
 """Reconstruct the citations from the DUC/TAC files."""
 
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import argparse
 import sys
 import codecs

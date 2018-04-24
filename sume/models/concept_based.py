@@ -2,8 +2,6 @@
 
 """Concept-based ILP summarization methods."""
 
-from __future__ import unicode_literals
-
 from collections import defaultdict, deque
 
 import random
