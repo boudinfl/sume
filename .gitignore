@@ -1,6 +1,4 @@
-
+.tox/
+.pytest_cache/
+sume.egg-info/
 *.pyc
-
-sume/ilp_models/dev.py
-
-sume/models/dev.py
