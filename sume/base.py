@@ -8,6 +8,8 @@ version: 0.1
 date: Nov. 2014
 """
 
+from __future__ import unicode_literals
+
 from collections import Counter
 
 import codecs
@@ -37,7 +39,7 @@ class State(object):
         self.score = 0
 
 
-class Sentence:
+class Sentence(object):
     """The sentence data structure.
 
     Args:
@@ -84,7 +86,7 @@ class LoadFile(object):
         self.input_directory = input_directory
         self.sentences = []
 
-    def read_documents(self, file_extension="txt"):
+    def read_documents(self, file_extension=".txt"):
         """Read the input files in the given directory.
 
         Load the input files and populate the sentence list. Input files are
@@ -92,7 +94,7 @@ class LoadFile(object):
 
         Args:
             file_extension (str): the file extension for input documents,
-              defaults to txt.
+              defaults to .txt.
 
         """
         for infile in os.listdir(self.input_directory):
@@ -101,18 +103,15 @@ class LoadFile(object):
             if not infile.endswith(file_extension):
                 continue
 
-            with codecs.open(self.input_directory + '/' + infile,
+            with codecs.open(os.path.join(self.input_directory, infile),
                              'r',
                              'utf-8') as f:
 
-                # load the sentences
-                lines = f.readlines()
-
                 # loop over sentences
-                for i in range(len(lines)):
+                for i, line in enumerate(f.readlines()):
 
                     # split the sentence into tokens
-                    tokens = lines[i].strip().split(' ')
+                    tokens = line.strip().split(' ')
 
                     # add the sentence
                     if len(tokens) > 0:
@@ -133,26 +132,26 @@ def untokenize(tokens):
         a string
 
     """
-    text = u' '.join(tokens)
-    text = re.sub(u"\s+", u" ", text.strip())
-    text = re.sub(u" ('[a-z]) ", u"\g<1> ", text)
-    text = re.sub(u" ([\.;,-]) ", u"\g<1> ", text)
-    text = re.sub(u" ([\.;,-?!])$", u"\g<1>", text)
-    text = re.sub(u" _ (.+) _ ", u" _\g<1>_ ", text)
-    text = re.sub(u" \$ ([\d\.]+) ", u" $\g<1> ", text)
-    text = text.replace(u" ' ", u"' ")
-    text = re.sub(u"([\W\s])\( ", u"\g<1>(", text)
-    text = re.sub(u" \)([\W\s])", u")\g<1>", text)
-    text = text.replace(u"`` ", u"``")
-    text = text.replace(u" ''", u"''")
-    text = text.replace(u" n't", u"n't")
-    text = re.sub(u'(^| )" ([^"]+) "( |$)', u'\g<1>"\g<2>"\g<3>', text)
+    text = ' '.join(tokens)
+    text = re.sub(r"\s+", r" ", text.strip())
+    text = re.sub(r" ('[a-z]) ", "\g<1> ", text)
+    text = re.sub(r" ([\.;,-]) ", "\g<1> ", text)
+    text = re.sub(r" ([\.;,-?!])$", "\g<1>", text)
+    text = re.sub(r" _ (.+) _ ", " _\g<1>_ ", text)
+    text = re.sub(r" \$ ([\d\.]+) ", " $\g<1> ", text)
+    text = text.replace(" ' ", "' ")
+    text = re.sub(r"([\W\s])\( ", "\g<1>(", text)
+    text = re.sub(r" \)([\W\s])", ")\g<1>", text)
+    text = text.replace("`` ", "``")
+    text = text.replace(" ''", "''")
+    text = text.replace(" n't", "n't")
+    text = re.sub(r'(^| )" ([^"]+) "( |$)', '\g<1>"\g<2>"\g<3>', text)
 
     # times
-    text = re.sub('(\d+) : (\d+ [ap]\.m\.)', '\g<1>:\g<2>', text)
+    text = re.sub(r'(\d+) : (\d+ [ap]\.m\.)', '\g<1>:\g<2>', text)
 
-    text = re.sub('^" ', '"', text)
-    text = re.sub(' "$', '"', text)
-    text = re.sub(u"\s+", u" ", text.strip())
+    text = re.sub(r'^" ', '"', text)
+    text = re.sub(r' "$', '"', text)
+    text = re.sub(r"\s+", " ", text.strip())
 
     return text
