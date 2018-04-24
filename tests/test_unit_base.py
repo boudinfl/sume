@@ -21,11 +21,13 @@ from __future__ import unicode_literals
 import sume.base
 
 
-def test_load_file(shared_datadir):
+def test_reader(shared_datadir):
     path = str((shared_datadir / 'cluster').resolve())
-    lf = sume.base.LoadFile(path)
-    lf.read_documents()
+    lf = sume.base.Reader(path)
+    lf.read_documents('.txt')
     assert len(lf.sentences) == 9
+    lf.prune_sentences(mininum_sentence_length=5)
+    assert len(lf.sentences) == 5
 
 
 def test_untokenize():

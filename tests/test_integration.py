@@ -34,7 +34,7 @@ def test_integration(shared_datadir):
 
     # compute the parameters needed by the model
     # extract bigrams as concepts
-    s.extract_ngrams()
+    s.extract_concepts(n=2, stemming=True)
 
     # compute document frequency as concept weights
     s.compute_document_frequency()

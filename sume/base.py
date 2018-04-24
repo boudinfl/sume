@@ -27,6 +27,8 @@ import codecs
 import os
 import re
 
+import nltk
+
 
 class State(object):
     """State class.
@@ -82,22 +84,30 @@ class Sentence(object):
         """ length of the untokenized sentence. """
 
 
-class LoadFile(object):
-    """Objects which inherit from this class have read file functions."""
+class Reader(object):
+    """Reader class to process input documents."""
 
-    def __init__(self, input_directory):
-        """Construct a file loader.
+    def __init__(self,
+                 input_directory):
+        """Construct a base summarizer to inherit from.
 
         Args:
-            input_file (str): the path of the input file.
-            use_stems (bool): whether stems should be used instead of words,
-              defaults to False.
+            input_directory (str): the directory from which text documents to
+              be summarized are loaded.
+            file_extension (str): the extension considered as input files by
+              the reader.
+            mininum_sentence_length (int): minimum length of sentences to keep
+              in the input documents. 0 = keep everything.
+            remove_citations (bool): whether to remove citations.
+            remove_redundancy (bool): whether to remove redundant sentences.
 
         """
         self.input_directory = input_directory
         self.sentences = []
+        self.stoplist = nltk.corpus.stopwords.words('english')
+        self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
 
-    def read_documents(self, file_extension=".txt"):
+    def read_documents(self, file_extension):
         """Read the input files in the given directory.
 
         Load the input files and populate the sentence list. Input files are
@@ -105,8 +115,7 @@ class LoadFile(object):
 
         Args:
             file_extension (str): the file extension for input documents,
-              defaults to .txt.
-
+              defaults to txt.
         """
         for infile in os.listdir(self.input_directory):
 
@@ -125,12 +134,104 @@ class LoadFile(object):
                     tokens = line.strip().split(' ')
 
                     # add the sentence
-                    if len(tokens) > 0:
+                    if tokens:
                         sentence = Sentence(tokens, infile, i)
                         untokenized_form = untokenize(tokens)
                         sentence.untokenized_form = untokenized_form
                         sentence.length = len(untokenized_form.split(' '))
                         self.sentences.append(sentence)
+
+    def prune_sentences(self,
+                        mininum_sentence_length=1,
+                        remove_citations=True,
+                        remove_redundancy=True):
+        """Prune the sentences.
+
+        Remove the sentences that are shorter than a given length, redundant
+        sentences and citations from entering the summary.
+
+        Args:
+            mininum_sentence_length (int): the minimum number of words for a
+              sentence to enter the summary, defaults to 5
+            remove_citations (bool): indicates that citations are pruned,
+              defaults to True
+            remove_redundancy (bool): indicates that redundant sentences are
+              pruned, defaults to True
+
+        """
+        pruned_sentences = []
+
+        # loop over the sentences
+        for sentence in self.sentences:
+
+            # prune short sentences
+            if sentence.length < mininum_sentence_length:
+                continue
+
+            # prune citations
+            first_token, last_token = sentence.tokens[0], sentence.tokens[-1]
+            if remove_citations and \
+               (first_token == "``" or first_token == '"') and \
+               (last_token == "''" or first_token == '"'):
+                continue
+
+            # prune ___ said citations
+            # if remove_citations and \
+            #     (sentence.tokens[0]=="``" or sentence.tokens[0]=='"') and \
+            #     re.search(r'(?i)(''|") \w{,30} (said|reported|told)\.$',
+            #               sentence.untokenized_form):
+            #     continue
+
+            # prune identical and almost identical sentences
+            if remove_redundancy:
+                is_redundant = False
+                for prev_sentence in pruned_sentences:
+                    if sentence.tokens == prev_sentence.tokens:
+                        is_redundant = True
+                        break
+
+                if is_redundant:
+                    continue
+
+            # otherwise add the sentence to the pruned sentence container
+            pruned_sentences.append(sentence)
+
+        self.sentences = pruned_sentences
+
+    def extract_concepts(self, n=1, stemming=False):
+        """Extract the ngrams of words from the input sentences.
+
+        Args:
+            n (int): the number of words for ngrams, defaults to 2
+        """
+        for i, sentence in enumerate(self.sentences):
+
+            # for each ngram of words
+            for j in range(len(sentence.tokens) - (n - 1)):
+
+                # initialize ngram container
+                ngram = []
+
+                # for each token of the ngram
+                for k in range(j, j + n):
+                    ngram.append(sentence.tokens[k].lower())
+
+                # do not consider ngrams containing punctuation marks
+                marks = [t for t in ngram if not re.search(r'[a-zA-Z0-9]', t)]
+                if len(marks) > 0:
+                    continue
+
+                # do not consider ngrams composed of only stopwords
+                stops = [t for t in ngram if t in self.stoplist]
+                if len(stops) == len(ngram):
+                    continue
+
+                # stem the ngram
+                if stemming:
+                    ngram = [self.stemmer.stem(t) for t in ngram]
+
+                # add the ngram to the concepts
+                self.sentences[i].concepts.append(' '.join(ngram))
 
 
 def untokenize(tokens):
