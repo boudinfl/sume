@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import nltk
 import sume.models.concept_based
 
