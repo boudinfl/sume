@@ -4,14 +4,18 @@ The **sume** module is an automatic summarization library written in Python.
 
 ## Installation
 
-The python module is available on PyPi. To install it, you can use:
+To install the dependencies, run:
 
-    pip install sume
+    sh install.sh
 
-**sume** also requires a linear solver on the path, such as `glpsol` from GLPK.
-Installation may vary. For a debian/ubuntu system, you can use:
+This will `pip install` the required packages, including the ones we have
+locally because they are either not on PyPi or not directly installable.
 
-    sudo apt-get install glpk-utils
+## Tests
+
+To run the tests, use:
+
+    python -m pytest
 
 ## Description
 
