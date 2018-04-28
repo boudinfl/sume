@@ -40,15 +40,14 @@ class ConceptBasedILPSummarizer(Reader):
 
     """
 
-    def __init__(self, input_directory):
+    def __init__(self, *args, **kwargs):
         """Construct a concept based ILP summarizer.
 
         Args:
-            input_directory (str): the directory from which text documents to
-              be summarized are loaded.
-
+            args: args to pass on to the sume.base.Reader constructor.
+            kwargs: kwargs to pass on to the sume.base.Reader constructor.
         """
-        super().__init__(input_directory)
+        super().__init__(*args, **kwargs)
         self.weights = {}
         self.c2s = defaultdict(set)
         self.concept_sets = defaultdict(frozenset)

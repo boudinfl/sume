@@ -88,26 +88,23 @@ class Reader(object):
     """Reader class to process input documents."""
 
     def __init__(self,
-                 input_directory):
-        """Construct a base summarizer to inherit from.
+                 input_directory,
+                 file_extension=''):
+        """Construct a text reader.
 
         Args:
             input_directory (str): the directory from which text documents to
               be summarized are loaded.
             file_extension (str): the extension considered as input files by
               the reader.
-            mininum_sentence_length (int): minimum length of sentences to keep
-              in the input documents. 0 = keep everything.
-            remove_citations (bool): whether to remove citations.
-            remove_redundancy (bool): whether to remove redundant sentences.
-
         """
         self.input_directory = input_directory
         self.sentences = []
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
+        self._read_documents(file_extension)
 
-    def read_documents(self, file_extension):
+    def _read_documents(self, file_extension):
         """Read the input files in the given directory.
 
         Load the input files and populate the sentence list. Input files are

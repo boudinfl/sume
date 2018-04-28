@@ -17,7 +17,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import nltk
-import sume.models.concept_based
+from sume.models.concept_based_ilp_summarizer import ConceptBasedILPSummarizer
 
 
 def test_integration(shared_datadir):
@@ -27,10 +27,7 @@ def test_integration(shared_datadir):
     dir_path = str((shared_datadir / 'cluster').resolve())
 
     # create a summarizer, here a concept-based ILP model
-    s = sume.models.concept_based.ConceptBasedILPSummarizer(dir_path)
-
-    # load documents with extension 'txt'
-    s.read_documents(file_extension="txt")
+    s = ConceptBasedILPSummarizer(dir_path, file_extension='.txt')
 
     # compute the parameters needed by the model
     # extract bigrams as concepts
