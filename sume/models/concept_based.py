@@ -71,6 +71,43 @@ class ConceptBasedILPSummarizer(Reader):
         for concept in self.weights:
             self.weights[concept] = len(self.weights[concept])
 
+    def extract_concepts(self, n=2, stemming=True):
+        """Extract the ngrams of words from the input sentences.
+
+        Args:
+            n (int): the number of words for ngrams, defaults to 2
+        """
+        for i, sentence in enumerate(self.sentences):
+
+            # for each ngram of words
+            for j in range(len(sentence.tokens) - (n - 1)):
+
+                # initialize ngram container
+                ngram = []
+
+                # for each token of the ngram
+                for k in range(j, j + n):
+                    ngram.append(sentence.tokens[k].lower())
+
+                # do not consider ngrams containing punctuation marks
+                marks = [t for t in ngram if not re.search(r'[a-zA-Z0-9]', t)]
+                if len(marks) > 0:
+                    continue
+
+                # do not consider ngrams composed of only stopwords
+                stops = [t for t in ngram if t in self.stoplist]
+                if len(stops) == len(ngram):
+                    continue
+
+                # stem the ngram
+                if stemming:
+                    ngram = [self.stemmer.stem(t) for t in ngram]
+
+                # add the ngram to the concepts
+                self.sentences[i].concepts.append(' '.join(ngram))
+
+
+
     def compute_word_frequency(self):
         """Compute the frequency of each word in the set of documents."""
         for i, sentence in enumerate(self.sentences):

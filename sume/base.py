@@ -147,7 +147,7 @@ class Reader(object):
                         remove_redundancy=True):
         """Prune the sentences.
 
-        Remove the sentences that are shorter than a given length, redundant
+        Prevent the sentences that are shorter than a given length, redundant
         sentences and citations from entering the summary.
 
         Args:
@@ -197,41 +197,6 @@ class Reader(object):
             pruned_sentences.append(sentence)
 
         self.sentences = pruned_sentences
-
-    def extract_concepts(self, n=1, stemming=False):
-        """Extract the ngrams of words from the input sentences.
-
-        Args:
-            n (int): the number of words for ngrams, defaults to 2
-        """
-        for i, sentence in enumerate(self.sentences):
-
-            # for each ngram of words
-            for j in range(len(sentence.tokens) - (n - 1)):
-
-                # initialize ngram container
-                ngram = []
-
-                # for each token of the ngram
-                for k in range(j, j + n):
-                    ngram.append(sentence.tokens[k].lower())
-
-                # do not consider ngrams containing punctuation marks
-                marks = [t for t in ngram if not re.search(r'[a-zA-Z0-9]', t)]
-                if len(marks) > 0:
-                    continue
-
-                # do not consider ngrams composed of only stopwords
-                stops = [t for t in ngram if t in self.stoplist]
-                if len(stops) == len(ngram):
-                    continue
-
-                # stem the ngram
-                if stemming:
-                    ngram = [self.stemmer.stem(t) for t in ngram]
-
-                # add the ngram to the concepts
-                self.sentences[i].concepts.append(' '.join(ngram))
 
 
 def untokenize(tokens):
