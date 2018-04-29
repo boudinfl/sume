@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
-""" Word Mover's Distance summarization."""
+"""Word Mover's Distance summarization."""
 
 import collections
 import logging
-import time
-import warnings
 
 import fastText
 import numpy
@@ -14,8 +12,12 @@ import wmd
 from ..base import Reader
 
 
+logger = logging.getLogger(__name__)
+
+
 class WMDSummarizer(Reader):
     """Word Mover's Distance summarization model."""
+
     def __init__(self,
                  model,
                  *args,
@@ -29,10 +31,18 @@ class WMDSummarizer(Reader):
             kwargs: kwargs to pass on to the sume.base.Reader constructor.
         """
         super().__init__(*args, **kwargs)
+        logger.debug('loading fastText model')
         self.model = fastText.load_model(model)
+        logger.debug('loaded fastText model')
+        logger.debug('embedding words')
         self._embed()
+        logger.debug('embedded words')
+        logger.debug('computing BOWs')
         self._compute_BOWs()
+        logger.debug('computed BOWs')
+        logger.debug('computing document nBOW')
         self._doc_nBOW = self._compute_nBOW((-1, range(len(self.sentences))))
+        logger.debug('computed document nBOW')
 
     def _embed(self):
         """Compute word embeddings."""
@@ -87,7 +97,6 @@ class WMDSummarizer(Reader):
               objective function and the set of selected sentences as a tuple.
 
         """
-
         # initialize the set of selected items
         S = set()
 
@@ -101,8 +110,8 @@ class WMDSummarizer(Reader):
 
             # remove unsuitable items
             C = set(c for c in C
-                    if summary_length + self.sentences[c].length <=
-                    summary_size)
+                    if summary_length + self.sentences[c].length
+                    <= summary_size)
 
             # stop if no scores are to be computed
             if not C:
