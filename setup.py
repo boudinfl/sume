@@ -87,7 +87,6 @@ setup(
         'Topic :: Text Processing'
     ],
     cmdclass={
-        'install': InstallCommand,
-        'test': 'pytest'
+        'install': InstallCommand
     }
 )
