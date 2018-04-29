@@ -31,18 +31,20 @@ class WMDSummarizer(Reader):
             kwargs: kwargs to pass on to the sume.base.Reader constructor.
         """
         super().__init__(*args, **kwargs)
+
+        logger.info('initializing WMD summarizer')
+
         logger.debug('loading fastText model')
         self.model = fastText.load_model(model)
-        logger.debug('loaded fastText model')
+
         logger.debug('embedding words')
         self._embed()
-        logger.debug('embedded words')
+
         logger.debug('computing BOWs')
         self._compute_BOWs()
-        logger.debug('computed BOWs')
+
         logger.debug('computing document nBOW')
         self._doc_nBOW = self._compute_nBOW((-1, range(len(self.sentences))))
-        logger.debug('computed document nBOW')
 
     def _embed(self):
         """Compute word embeddings."""
@@ -97,32 +99,38 @@ class WMDSummarizer(Reader):
               objective function and the set of selected sentences as a tuple.
 
         """
-        # initialize the set of selected items
+        logger.info('initializing the greedy approximation procedure')
+
+        logger.debug('initializing the set of selected items')
         S = set()
 
-        # initialize the set of item candidates
+        logger.debug('initializing the set of candidates')
         C = set(range(len(self.sentences)))
 
         summary_length = 0
 
-        # main loop -> until the set of candidates is empty
+        logger.debug('looping until the set of candidates is empty')
         while len(C) > 0:
 
-            # remove unsuitable items
+            logger.debug('removing unsuitable items')
             C = set(c for c in C
                     if summary_length + self.sentences[c].length
                     <= summary_size)
 
-            # stop if no scores are to be computed
+            logger.debug('stopping if there are no candidates left')
             if not C:
                 break
 
+            logger.debug('computing the best candidate')
             c = self._most_similar([(c, S | {c}) for c in C])
 
+            logger.info('selecting sentence {}'.format(c))
+
+            logger.debug('adding the best candidate to the selected items')
             S.add(c)
             summary_length += self.sentences[c].length
 
-            # remove the selected sentence
+            logger.debug('removing the best candidate from the candidates')
             C.remove(c)
 
         return S
