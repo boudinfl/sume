@@ -4,12 +4,17 @@ The **sume** module is an automatic summarization library written in Python.
 
 ## Installation
 
-To install the dependencies, run:
+To install the module in your current environment, run:
 
-    sh install.sh
+    pip install .
 
-This will `pip install` the required packages, including the ones we have
-locally because they are either not on PyPi or not directly installable.
+Note that in editable mode (`pip install -e .`), some required dependencies
+will NOT be properly installed, so you should install them separately :
+
+    pip install numpy Cython
+    pip install wmd
+    cd pybind11 && pip install . && cd ..
+    cd fastText && pip install . && cd ..
 
 ## Tests
 
