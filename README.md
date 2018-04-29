@@ -15,7 +15,7 @@ locally because they are either not on PyPi or not directly installable.
 
 To run the tests, use:
 
-    python -m pytest
+    python setup.py test
 
 ## Description
 
