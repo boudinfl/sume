@@ -16,6 +16,7 @@
 
 .tox/
 .pytest_cache/
+__pycache__/
 sume.egg-info/
 *.pyc
 .eggs/
