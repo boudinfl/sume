@@ -24,7 +24,6 @@ import sume.base
 def test_reader(shared_datadir):
     path = str((shared_datadir / 'cluster').resolve())
     lf = sume.base.Reader(path)
-    lf.read_documents('.txt')
     assert len(lf.sentences) == 9
     lf.prune_sentences(mininum_sentence_length=5)
     assert len(lf.sentences) == 5
