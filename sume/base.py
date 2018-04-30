@@ -1,16 +1,33 @@
 # -*- coding: utf-8 -*-
+
+# sume
+# Copyright (C) 2014, 2015, 2018 Florian Boudin
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 """Base structures and functions for the sume module.
 
 Base contains the Sentence, LoadFile and State classes.
 """
-
-from __future__ import unicode_literals
 
 from collections import Counter
 
 import codecs
 import os
 import re
+
+import nltk
 
 
 class State(object):
@@ -67,22 +84,27 @@ class Sentence(object):
         """ length of the untokenized sentence. """
 
 
-class LoadFile(object):
-    """Objects which inherit from this class have read file functions."""
+class Reader(object):
+    """Reader class to process input documents."""
 
-    def __init__(self, input_directory):
-        """Construct a file loader.
+    def __init__(self,
+                 input_directory,
+                 file_extension=''):
+        """Construct a text reader.
 
         Args:
-            input_file (str): the path of the input file.
-            use_stems (bool): whether stems should be used instead of words,
-              defaults to False.
-
+            input_directory (str): the directory from which text documents to
+              be summarized are loaded.
+            file_extension (str): the extension considered as input files by
+              the reader.
         """
         self.input_directory = input_directory
         self.sentences = []
+        self.stoplist = nltk.corpus.stopwords.words('english')
+        self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
+        self._read_documents(file_extension)
 
-    def read_documents(self, file_extension=".txt"):
+    def _read_documents(self, file_extension):
         """Read the input files in the given directory.
 
         Load the input files and populate the sentence list. Input files are
@@ -90,8 +112,7 @@ class LoadFile(object):
 
         Args:
             file_extension (str): the file extension for input documents,
-              defaults to .txt.
-
+              defaults to txt.
         """
         for infile in os.listdir(self.input_directory):
 
@@ -110,12 +131,69 @@ class LoadFile(object):
                     tokens = line.strip().split(' ')
 
                     # add the sentence
-                    if len(tokens) > 0:
+                    if tokens:
                         sentence = Sentence(tokens, infile, i)
                         untokenized_form = untokenize(tokens)
                         sentence.untokenized_form = untokenized_form
                         sentence.length = len(untokenized_form.split(' '))
                         self.sentences.append(sentence)
+
+    def prune_sentences(self,
+                        mininum_sentence_length=1,
+                        remove_citations=True,
+                        remove_redundancy=True):
+        """Prune the sentences.
+
+        Prevent the sentences that are shorter than a given length, redundant
+        sentences and citations from entering the summary.
+
+        Args:
+            mininum_sentence_length (int): the minimum number of words for a
+              sentence to enter the summary, defaults to 5
+            remove_citations (bool): indicates that citations are pruned,
+              defaults to True
+            remove_redundancy (bool): indicates that redundant sentences are
+              pruned, defaults to True
+
+        """
+        pruned_sentences = []
+
+        # loop over the sentences
+        for sentence in self.sentences:
+
+            # prune short sentences
+            if sentence.length < mininum_sentence_length:
+                continue
+
+            # prune citations
+            first_token, last_token = sentence.tokens[0], sentence.tokens[-1]
+            if remove_citations and \
+               (first_token == "``" or first_token == '"') and \
+               (last_token == "''" or first_token == '"'):
+                continue
+
+            # prune ___ said citations
+            # if remove_citations and \
+            #     (sentence.tokens[0]=="``" or sentence.tokens[0]=='"') and \
+            #     re.search(r'(?i)(''|") \w{,30} (said|reported|told)\.$',
+            #               sentence.untokenized_form):
+            #     continue
+
+            # prune identical and almost identical sentences
+            if remove_redundancy:
+                is_redundant = False
+                for prev_sentence in pruned_sentences:
+                    if sentence.tokens == prev_sentence.tokens:
+                        is_redundant = True
+                        break
+
+                if is_redundant:
+                    continue
+
+            # otherwise add the sentence to the pruned sentence container
+            pruned_sentences.append(sentence)
+
+        self.sentences = pruned_sentences
 
 
 def untokenize(tokens):

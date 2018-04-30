@@ -4,14 +4,23 @@ The **sume** module is an automatic summarization library written in Python.
 
 ## Installation
 
-The python module is available on PyPi. To install it, you can use:
+To install the module in your current environment, run:
 
-    pip install sume
+    pip install .
 
-**sume** also requires a linear solver on the path, such as `glpsol` from GLPK.
-Installation may vary. For a debian/ubuntu system, you can use:
+Note that in editable mode (`pip install -e .`), some required dependencies
+will NOT be properly installed, so you should install them separately :
 
-    sudo apt-get install glpk-utils
+    pip install numpy Cython
+    pip install wmd
+    cd pybind11 && pip install . && cd ..
+    cd fastText && pip install . && cd ..
+
+## Tests
+
+To run the tests, use:
+
+    python setup.py test
 
 ## Description
 
@@ -38,8 +47,8 @@ A typical usage of this module is:
     s.read_documents()
 
     # compute the parameters needed by the model
-    # extract bigrams as concepts
-    s.extract_ngrams()
+    # extract stemmed bigrams as concepts
+    s.extract_concepts(n=2, stemming=True)
 
     # compute document frequency as concept weights
     s.compute_document_frequency()

@@ -1,8 +1,22 @@
 # -*- coding: utf-8 -*-
 
-"""Concept-based ILP summarization methods."""
+# sume
+# Copyright (C) 2014, 2015, 2018 Florian Boudin
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-from __future__ import unicode_literals
+"""Concept-based ILP summarization methods."""
 
 from collections import defaultdict, deque
 
@@ -10,13 +24,12 @@ import random
 import re
 import sys
 
-import nltk
 import pulp
 
-from sume.base import State, LoadFile
+from ..base import State, Reader
 
 
-class ConceptBasedILPSummarizer(LoadFile):
+class ConceptBasedILPSummarizer(Reader):
     """Implementation of the concept-based ILP model for summarization.
 
     The original algorithm was published and described in:
@@ -27,57 +40,19 @@ class ConceptBasedILPSummarizer(LoadFile):
 
     """
 
-    def __init__(self, input_directory):
+    def __init__(self, *args, **kwargs):
         """Construct a concept based ILP summarizer.
 
         Args:
-            input_directory (str): the directory from which text documents to
-              be summarized are loaded.
-
+            args: args to pass on to the sume.base.Reader constructor.
+            kwargs: kwargs to pass on to the sume.base.Reader constructor.
         """
-        self.input_directory = input_directory
-        self.sentences = []
+        super().__init__(*args, **kwargs)
         self.weights = {}
         self.c2s = defaultdict(set)
         self.concept_sets = defaultdict(frozenset)
-        self.stoplist = nltk.corpus.stopwords.words('english')
-        self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
         self.word_frequencies = defaultdict(int)
         self.w2s = defaultdict(set)
-
-    def extract_ngrams(self, n=2):
-        """Extract the ngrams of words from the input sentences.
-
-        Args:
-            n (int): the number of words for ngrams, defaults to 2
-        """
-        for i, sentence in enumerate(self.sentences):
-
-            # for each ngram of words
-            for j in range(len(sentence.tokens)-(n-1)):
-
-                # initialize ngram container
-                ngram = []
-
-                # for each token of the ngram
-                for k in range(j, j+n):
-                    ngram.append(sentence.tokens[k].lower())
-
-                # do not consider ngrams containing punctuation marks
-                marks = [t for t in ngram if not re.search(r'[a-zA-Z0-9]', t)]
-                if len(marks) > 0:
-                    continue
-
-                # do not consider ngrams composed of only stopwords
-                stops = [t for t in ngram if t in self.stoplist]
-                if len(stops) == len(ngram):
-                    continue
-
-                # stem the ngram
-                ngram = [self.stemmer.stem(t) for t in ngram]
-
-                # add the ngram to the concepts
-                self.sentences[i].concepts.append(' '.join(ngram))
 
     def compute_document_frequency(self):
         """Compute the document frequency of each concept."""
@@ -95,6 +70,43 @@ class ConceptBasedILPSummarizer(LoadFile):
         for concept in self.weights:
             self.weights[concept] = len(self.weights[concept])
 
+    def extract_concepts(self, n=2, stemming=True):
+        """Extract the ngrams of words from the input sentences.
+
+        Args:
+            n (int): the number of words for ngrams, defaults to 2
+        """
+        for i, sentence in enumerate(self.sentences):
+
+            # for each ngram of words
+            for j in range(len(sentence.tokens) - (n - 1)):
+
+                # initialize ngram container
+                ngram = []
+
+                # for each token of the ngram
+                for k in range(j, j + n):
+                    ngram.append(sentence.tokens[k].lower())
+
+                # do not consider ngrams containing punctuation marks
+                marks = [t for t in ngram if not re.search(r'[a-zA-Z0-9]', t)]
+                if len(marks) > 0:
+                    continue
+
+                # do not consider ngrams composed of only stopwords
+                stops = [t for t in ngram if t in self.stoplist]
+                if len(stops) == len(ngram):
+                    continue
+
+                # stem the ngram
+                if stemming:
+                    ngram = [self.stemmer.stem(t) for t in ngram]
+
+                # add the ngram to the concepts
+                self.sentences[i].concepts.append(' '.join(ngram))
+
+
+
     def compute_word_frequency(self):
         """Compute the frequency of each word in the set of documents."""
         for i, sentence in enumerate(self.sentences):
@@ -105,63 +117,6 @@ class ConceptBasedILPSummarizer(LoadFile):
                 t = self.stemmer.stem(t)
                 self.w2s[t].add(i)
                 self.word_frequencies[t] += 1
-
-    def prune_sentences(self,
-                        mininum_sentence_length=5,
-                        remove_citations=True,
-                        remove_redundancy=True):
-        """Prune the sentences.
-
-        Remove the sentences that are shorter than a given length, redundant
-        sentences and citations from entering the summary.
-
-        Args:
-            mininum_sentence_length (int): the minimum number of words for a
-              sentence to enter the summary, defaults to 5
-            remove_citations (bool): indicates that citations are pruned,
-              defaults to True
-            remove_redundancy (bool): indicates that redundant sentences are
-              pruned, defaults to True
-
-        """
-        pruned_sentences = []
-
-        # loop over the sentences
-        for sentence in self.sentences:
-
-            # prune short sentences
-            if sentence.length < mininum_sentence_length:
-                continue
-
-            # prune citations
-            first_token, last_token = sentence.tokens[0], sentence.tokens[-1]
-            if remove_citations and \
-               (first_token == "``" or first_token == '"') and \
-               (last_token == "''" or first_token == '"'):
-                continue
-
-            # prune ___ said citations
-            # if remove_citations and \
-            #     (sentence.tokens[0]=="``" or sentence.tokens[0]=='"') and \
-            #     re.search('(?i)(''|") \w{,30} (said|reported|told)\.$',
-            #               sentence.untokenized_form):
-            #     continue
-
-            # prune identical and almost identical sentences
-            if remove_redundancy:
-                is_redundant = False
-                for prev_sentence in pruned_sentences:
-                    if sentence.tokens == prev_sentence.tokens:
-                        is_redundant = True
-                        break
-
-                if is_redundant:
-                    continue
-
-            # otherwise add the sentence to the pruned sentence container
-            pruned_sentences.append(sentence)
-
-        self.sentences = pruned_sentences
 
     def prune_concepts(self, method="threshold", value=3):
         """Prune the concepts for efficient summarization.

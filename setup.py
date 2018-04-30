@@ -1,34 +1,31 @@
-"""Setup the sume package."""
 # -*- coding: utf-8 -*-
+
+# sume
+# Copyright (C) 2014, 2015, 2018 Florian Boudin
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+"""Setup the sume package."""
 
 import io
 import os
 import sys
-from shutil import rmtree
 
-from setuptools import find_packages, setup, Command
-
-# Package meta-data.
-NAME = 'sume'
-DESCRIPTION = 'Automatic summarization library.'
-URL = 'https://github.com/boudinfl/sume'
-EMAIL = 'florian.boudin@univ-nantes.fr'
-AUTHOR = 'Florian Boudin'
-VERSION = '2.0'
-PYTHON_REQUIRES = '>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*'
-
-
-# What packages are required for this module to be executed?
-INSTALL_REQUIRES = [
-    'PuLP',
-    'gensim',
-    'nltk',
-    'numpy',
-]
-
-TEST_REQUIRES = [
-    'pytest'
-]
+from setuptools import find_packages, setup
+from setuptools.command.develop import develop
+from setuptools.command.install import install
+import subprocess
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -36,62 +33,55 @@ with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
 
 
-class UploadCommand(Command):
-    """Support setup.py upload."""
+def _install_custom():
+    def pip_install(package, cwd=None):
+        subprocess.check_call([sys.executable,
+                               '-m',
+                               'pip',
+                               'install',
+                               package],
+                              cwd=cwd)
 
-    description = 'Build and publish the package.'
-    user_options = []
+    pip_install('numpy')
+    pip_install('Cython')
+    pip_install('wmd')
+    pip_install('.', cwd='pybind11')
+    pip_install('.', cwd='fastText')
 
-    @staticmethod
-    def status(s):
-        """Print things in bold."""
-        print('\033[1m{0}\033[0m'.format(s))
 
-    def initialize_options(self):
-        """Nothing to initialize."""
-        pass
-
-    def finalize_options(self):
-        """Nothing to finalize."""
-        pass
+class InstallCommand(install):
+    """Hack to circumvent fasttext and wmd install limitations."""
 
     def run(self):
-        """Upload the package to PyPi."""
-        try:
-            self.status('Removing previous builds…')
-            rmtree(os.path.join(here, 'dist'))
-        except OSError:
-            pass
+        """Hack to install wmd and fastText."""
+        _install_custom()
+        install.run(self)
 
-        self.status('Building Source and Wheel (universal) distribution…')
-        os.system('{0} setup.py sdist bdist_wheel --universal'.format(
-            sys.executable))
 
-        self.status('Uploading the package to PyPi via Twine…')
-        os.system('twine upload dist/*')
+class DevelopCommand(develop):
+    """Hack to circumvent fasttext and wmd install limitations."""
 
-        sys.exit()
+    def run(self):
+        """Hack to install wmd and fastText."""
+        _install_custom()
+        develop.run(self)
 
 
 # Where the magic happens:
 setup(
-    name=NAME,
-    version=VERSION,
-    description=DESCRIPTION,
+    name='sume',
+    version='2.0.0',
+    description='Automatic summarization library.',
     long_description=long_description,
-    author=AUTHOR,
-    author_email=EMAIL,
-    url=URL,
-    python_requires=PYTHON_REQUIRES,
+    author='Florian Boudin',
+    author_email='florian.boudin@univ-nantes.fr',
+    url='https://github.com/boudinfl/sume',
+    python_requires='>=3.4',
     packages=find_packages(exclude=('tests',)),
-    # If your package is a single module, use this instead of 'packages':
-    # py_modules=['mypackage'],
-
-    # entry_points={
-    #     'console_scripts': ['mycli=mymodule:cli'],
-    # },
-    install_requires=INSTALL_REQUIRES,
-    test_requires=TEST_REQUIRES,
+    setup_requires=['pytest-runner'],
+    # wmd and fastText are installed in custom commands
+    install_requires=['PuLP', 'gensim', 'nltk'],
+    tests_require=['pytest', 'pytest-datadir'],
     include_package_data=True,
     license='GNU General Public License v3 (GPLv3)',
     classifiers=[
@@ -100,8 +90,6 @@ setup(
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
@@ -110,6 +98,7 @@ setup(
         'Topic :: Text Processing'
     ],
     cmdclass={
-        'upload': UploadCommand,
-    },
+        'install': InstallCommand,
+        'develop': DevelopCommand
+    }
 )

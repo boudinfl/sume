@@ -1,5 +1,23 @@
+# -*- coding: utf-8 -*-
+
+# sume
+# Copyright (C) 2014, 2015, 2018 Florian Boudin
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 import nltk
-import sume.models.concept_based
+from sume.models.concept_based_ilp_summarizer import ConceptBasedILPSummarizer
 
 
 def test_integration(shared_datadir):
@@ -9,14 +27,11 @@ def test_integration(shared_datadir):
     dir_path = str((shared_datadir / 'cluster').resolve())
 
     # create a summarizer, here a concept-based ILP model
-    s = sume.models.concept_based.ConceptBasedILPSummarizer(dir_path)
-
-    # load documents with extension 'txt'
-    s.read_documents(file_extension="txt")
+    s = ConceptBasedILPSummarizer(dir_path, file_extension='.txt')
 
     # compute the parameters needed by the model
     # extract bigrams as concepts
-    s.extract_ngrams()
+    s.extract_concepts(n=2, stemming=True)
 
     # compute document frequency as concept weights
     s.compute_document_frequency()
