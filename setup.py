@@ -23,6 +23,7 @@ import os
 import sys
 
 from setuptools import find_packages, setup
+from setuptools.command.develop import develop
 from setuptools.command.install import install
 import subprocess
 
@@ -32,27 +33,39 @@ with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
 
 
-class InstallCommand(install):
-    """Hack to circumvent fasttext and wmd install limitations."""
-
-    @staticmethod
-    def _pip_install(package, cwd=None):
+def _install_custom():
+    def pip_install(package, cwd=None):
         subprocess.check_call([sys.executable,
                                '-m',
                                'pip',
                                'install',
                                package],
-                              cwd=cwd,
-                              stdout=subprocess.PIPE)
+                              cwd=cwd)
+
+    pip_install('numpy')
+    pip_install('Cython')
+    pip_install('wmd')
+    pip_install('.', cwd='pybind11')
+    pip_install('.', cwd='fastText')
+
+
+class InstallCommand(install):
+    """Hack to circumvent fasttext and wmd install limitations."""
 
     def run(self):
-        """Install numpy and Cython before the rest."""
-        self._pip_install('numpy')
-        self._pip_install('Cython')
-        self._pip_install('wmd')
-        self._pip_install('.', cwd='pybind11')
-        self._pip_install('.', cwd='fastText')
+        """Hack to install wmd and fastText."""
+        _install_custom()
         install.run(self)
+
+
+class DevelopCommand(develop):
+    """Hack to circumvent fasttext and wmd install limitations."""
+
+    @staticmethod
+    def run(self):
+        """Hack to install wmd and fastText."""
+        _install_custom()
+        develop.run(self)
 
 
 # Where the magic happens:
@@ -66,8 +79,8 @@ setup(
     url='https://github.com/boudinfl/sume',
     python_requires='>=3.4',
     packages=find_packages(exclude=('tests',)),
-    # some other dependencies are installed in InstallCommand
     setup_requires=['pytest-runner'],
+    # wmd and fastText are installed in custom commands
     install_requires=['PuLP', 'gensim', 'nltk'],
     tests_require=['pytest', 'pytest-datadir'],
     include_package_data=True,
@@ -86,6 +99,7 @@ setup(
         'Topic :: Text Processing'
     ],
     cmdclass={
-        'install': InstallCommand
+        'install': InstallCommand,
+        'develop': DevelopCommand
     }
 )
