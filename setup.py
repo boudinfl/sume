@@ -61,7 +61,6 @@ class InstallCommand(install):
 class DevelopCommand(develop):
     """Hack to circumvent fasttext and wmd install limitations."""
 
-    @staticmethod
     def run(self):
         """Hack to install wmd and fastText."""
         _install_custom()
