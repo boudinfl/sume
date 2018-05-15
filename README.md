@@ -12,7 +12,7 @@ sume contains the following extraction algorithms:
 To pip install `sume` from github:
 
 ```bash
-pip install git+https://github.com/boudinfl/sume.git
+pip install git+https://github.com/boudinfl/sume.git@fresh
 ```
 
 ## Minimal Example
