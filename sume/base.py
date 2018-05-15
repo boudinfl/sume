@@ -87,6 +87,56 @@ class LoadFile(object):
                         sentence.length = len(untokenized_form.split(' '))
                         self.sentences.append(sentence)
 
+    def prune_sentences(self,
+                        mininum_sentence_length=5,
+                        remove_citations=True,
+                        remove_redundancy=True):
+        """Prune the sentences.
+
+        Remove the sentences that are shorter than a given length, redundant
+        sentences and citations from entering the summary.
+
+        Args:
+            mininum_sentence_length (int): the minimum number of words for a
+                sentence to enter the summary, defaults to 5
+            remove_citations (bool): indicates that citations are pruned,
+                defaults to True
+            remove_redundancy (bool): indicates that redundant sentences are
+                pruned, defaults to True
+
+        """
+        pruned_sentences = []
+
+        # loop over the sentences
+        for sentence in self.sentences:
+
+            # prune short sentences
+            if sentence.length < mininum_sentence_length:
+                continue
+
+            # prune citations
+            first_token, last_token = sentence.tokens[0], sentence.tokens[-1]
+            if remove_citations and \
+               (first_token == u"``" or first_token == u'"') and \
+               (last_token == u"''" or first_token == u'"'):
+                continue
+
+            # prune identical and almost identical sentences
+            if remove_redundancy:
+                is_redundant = False
+                for prev_sentence in pruned_sentences:
+                    if sentence.tokens == prev_sentence.tokens:
+                        is_redundant = True
+                        break
+
+                if is_redundant:
+                    continue
+
+            # otherwise add the sentence to the pruned sentence container
+            pruned_sentences.append(sentence)
+
+        self.sentences = pruned_sentences
+
     def _untokenize(self, tokens):
         """Untokenizing a list of tokens. 
 
