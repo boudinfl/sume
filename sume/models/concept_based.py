@@ -117,7 +117,7 @@ class ConceptBasedILPSummarizer(LoadFile):
         if method == "threshold":
 
             # iterates over the concept weights
-            concepts = self.weights.keys()
+            concepts = list(self.weights)
             for concept in concepts:
                 if self.weights[concept] < value:
                     del self.weights[concept]
