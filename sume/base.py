@@ -89,6 +89,7 @@ class LoadFile(object):
 
     def prune_sentences(self,
                         mininum_sentence_length=5,
+                        maximum_sentence_length=30,
                         remove_citations=True,
                         remove_redundancy=True):
         """Prune the sentences.
@@ -99,6 +100,8 @@ class LoadFile(object):
         Args:
             mininum_sentence_length (int): the minimum number of words for a
                 sentence to enter the summary, defaults to 5
+            maximum_sentence_length (int): the maximum number of words for a
+                sentence to enter the summary, defaults to 30
             remove_citations (bool): indicates that citations are pruned,
                 defaults to True
             remove_redundancy (bool): indicates that redundant sentences are
@@ -112,6 +115,10 @@ class LoadFile(object):
 
             # prune short sentences
             if sentence.length < mininum_sentence_length:
+                continue
+
+            # prune long sentences
+            if sentence.length > maximum_sentence_length:
                 continue
 
             # prune citations
