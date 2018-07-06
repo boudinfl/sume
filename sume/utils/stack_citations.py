@@ -3,12 +3,15 @@
 
 import re
 import sys
+import logging
 import codecs
 
 """ Reconstruct the citations from the DUC/TAC files.
 
     author: florian boudin (florian.boudin@univ-nantes.fr)
 """
+
+logging.basicConfig(level=logging.INFO)
 
 # open the input file
 with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
@@ -41,8 +44,8 @@ with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
                     endings.append(remp_char)
                 else:
                     openings.append(remp_char)
-                print 'info - error with quotation marks at', sys.argv[1]
-                print 'info - correcting, modifying with ', remp_char
+                logging.info('error with quotation marks at ' + sys.argv[1])
+                logging.info('info - correcting, modifying with ' + remp_char)
                 tokens[i] = remp_char
                 line = ' '.join(tokens)
 
@@ -60,6 +63,13 @@ with codecs.open(sys.argv[1], 'r', 'utf-8') as f:
             else:
                 stacked_lines.append(line)
                 in_citation = True
+
+    # separate the last punctuation marks
+    for i, line in enumerate(stacked_lines):
+        stacked_lines[i] = re.sub('(\w)([\.\!\?])$', '\g<1> \g<2>', line)
+        stacked_lines[i] = re.sub("(\w)([\.\!\?]) (\"|'')$", '\g<1> \g<2> \g<3>', stacked_lines[i])
+        if line == stacked_lines[i]:
+            logging.info('no modification for sentence: ' + line)
 
     # write the reconstructed file
     with codecs.open(sys.argv[2], 'w', 'utf-8') as w:
