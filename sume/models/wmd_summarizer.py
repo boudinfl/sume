@@ -10,7 +10,6 @@ import time
 
 import fastText
 import numpy
-import sklearn.metrics.pairwise
 import fwmd
 
 from ..base import Reader
