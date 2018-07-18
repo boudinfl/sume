@@ -1,13 +1,17 @@
 # -*- coding: utf-8 -*-
 
+
 """Word Mover's Distance summarization."""
+
 
 import collections
 import logging
+import time
 
 import fastText
 import numpy
-import wmd
+import sklearn.metrics.pairwise
+import fwmd
 
 from ..base import Reader
 
@@ -44,7 +48,7 @@ class WMDSummarizer(Reader):
         self._compute_BOWs()
 
         logger.debug('computing document nBOW')
-        self._doc_nBOW = self._compute_nBOW((-1, range(len(self.sentences))))
+        self._doc_nBOW = self._compute_nBOW(range(len(self.sentences)))
 
     def _embed(self):
         """Compute word embeddings."""
@@ -71,22 +75,26 @@ class WMDSummarizer(Reader):
                 for token in sentence.tokens
             }))
 
-    def _compute_nBOW(self, args):
-        key, indices = args
+    def _compute_nBOW(self, indices):
         BOW = sum((self._BOWs[i] for i in indices), collections.Counter())
         word_indices, weights = zip(*BOW.items())
         weights = numpy.array(weights, dtype=numpy.float32)
         normalization = sum(len(self.sentences[i].tokens) for i in indices)
-        return key, word_indices, weights / normalization
+        return list(word_indices), weights / normalization
 
-    def _most_similar(self, summaries):
-        nBOWs = {self._doc_nBOW[0]: self._doc_nBOW}
-        for key, indices, weights in map(self._compute_nBOW, summaries):
-            nBOWs[key] = (key, indices, weights)
-        calc = wmd.WMD(self.embeddings, nBOWs)
-        return calc.nearest_neighbors(self._doc_nBOW[0],
-                                      k=1,
-                                      early_stop=1)[0][0]
+    def _most_similar(self, keys, indices_list, k=1):
+        query = self._doc_nBOW
+        nBOWs = [self._compute_nBOW(indices) for indices in indices_list]
+        logger.debug('computing most similar nBOW amongst {} nBOWs.'.format(
+            len(nBOWs)))
+        start = time.time()
+        calc = fwmd.WMD(self.embeddings)
+        nn = calc.nn(query, dict(zip(keys, nBOWs)), k=1, m_base='n', m_coeff=1)
+        logger.debug(
+            'computed the {} most similar nBOWs in {:.2f} seconds'.format(
+                k,
+                time.time() - start))
+        return nn[0][1]
 
     def greedy_approximation(self, summary_size=100):
         """Greedy approximation for finding the best set of sentences.
@@ -122,9 +130,14 @@ class WMDSummarizer(Reader):
                 break
 
             logger.debug('computing the best candidate')
-            c = self._most_similar([(c, S | {c}) for c in C])
+            keys = []
+            indices_list = []
+            for c in C:
+                keys.append(c)
+                indices_list.append(S | {c})
+            c = self._most_similar(keys, indices_list)
 
-            logger.info('selecting sentence {}'.format(c))
+            logger.debug('selecting sentence {}'.format(c))
 
             logger.debug('adding the best candidate to the selected items')
             S.add(c)

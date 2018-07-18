@@ -73,6 +73,7 @@ setup(
     version='2.0.0',
     description='Automatic summarization library.',
     long_description=long_description,
+    long_description_content_type='text/markdown',
     author='Florian Boudin',
     author_email='florian.boudin@univ-nantes.fr',
     url='https://github.com/boudinfl/sume',
@@ -80,7 +81,7 @@ setup(
     packages=find_packages(exclude=('tests',)),
     setup_requires=['pytest-runner'],
     # wmd and fastText are installed in custom commands
-    install_requires=['PuLP', 'gensim', 'nltk'],
+    install_requires=['PuLP', 'gensim', 'nltk', 'sklearn'],
     tests_require=['pytest', 'pytest-datadir'],
     include_package_data=True,
     license='GNU General Public License v3 (GPLv3)',
