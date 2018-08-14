@@ -26,6 +26,7 @@ from collections import Counter
 import codecs
 import os
 import re
+from typing import List, Sequence, Set
 
 import nltk
 
@@ -44,10 +45,10 @@ class State(object):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Construct a State object."""
-        self.subset = set()
-        self.concepts = Counter()
+        self.subset: Set[int] = set()
+        self.concepts: Counter = Counter()
         self.length = 0
         self.score = 0
 
@@ -63,7 +64,8 @@ class Sentence(object):
 
     """
 
-    def __init__(self, tokens, doc_id, position):
+    def __init__(self, tokens: Sequence[str], doc_id: str, position: int
+                 ) -> None:
         """Construct a sentence."""
         self.tokens = tokens
         """ tokens as a list. """
@@ -74,7 +76,7 @@ class Sentence(object):
         self.position = position
         """ position of the sentence within the document. """
 
-        self.concepts = []
+        self.concepts: List[str] = []
         """ concepts of the sentence. """
 
         self.untokenized_form = ''
@@ -88,8 +90,8 @@ class Reader(object):
     """Reader class to process input documents."""
 
     def __init__(self,
-                 input_directory,
-                 file_extension=''):
+                 input_directory: str,
+                 file_extension: str = '') -> None:
         """Construct a text reader.
 
         Args:
@@ -99,12 +101,12 @@ class Reader(object):
               the reader.
         """
         self.input_directory = input_directory
-        self.sentences = []
+        self.sentences: List[Sentence] = []
         self.stoplist = nltk.corpus.stopwords.words('english')
         self.stemmer = nltk.stem.snowball.SnowballStemmer('english')
         self._read_documents(file_extension)
 
-    def _read_documents(self, file_extension):
+    def _read_documents(self, file_extension: str) -> None:
         """Read the input files in the given directory.
 
         Load the input files and populate the sentence list. Input files are
@@ -139,9 +141,9 @@ class Reader(object):
                         self.sentences.append(sentence)
 
     def prune_sentences(self,
-                        mininum_sentence_length=1,
-                        remove_citations=True,
-                        remove_redundancy=True):
+                        mininum_sentence_length: int = 1,
+                        remove_citations: bool = True,
+                        remove_redundancy: bool = True) -> None:
         """Prune the sentences.
 
         Prevent the sentences that are shorter than a given length, redundant
@@ -156,7 +158,7 @@ class Reader(object):
               pruned, defaults to True
 
         """
-        pruned_sentences = []
+        pruned_sentences: List[Sentence] = []
 
         # loop over the sentences
         for sentence in self.sentences:
@@ -196,7 +198,7 @@ class Reader(object):
         self.sentences = pruned_sentences
 
 
-def untokenize(tokens):
+def untokenize(tokens: Sequence[str]) -> str:
     """Untokenize a list of tokens.
 
     Args:
