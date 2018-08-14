@@ -7,13 +7,14 @@
 import collections
 import logging
 import time
+from typing import Hashable, Iterable, List, Mapping, Sequence, Set, TypeVar
 
 import fastText
 import numpy
+
 import fwmd
 
 from ..base import Reader
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,10 +22,8 @@ logger = logging.getLogger(__name__)
 class WMDSummarizer(Reader):
     """Word Mover's Distance summarization model."""
 
-    def __init__(self,
-                 model,
-                 *args,
-                 **kwargs):
+    def __init__(self, model: fastText.FastText._FastText, input_directory: str,
+                 file_extension: str = '') -> None:
         """Construct a WMD summarizer.
 
         Args:
@@ -33,7 +32,7 @@ class WMDSummarizer(Reader):
             args: args to pass on to the sume.base.Reader constructor.
             kwargs: kwargs to pass on to the sume.base.Reader constructor.
         """
-        super().__init__(*args, **kwargs)
+        super().__init__(input_directory, file_extension=file_extension)
 
         logger.info('initializing WMD summarizer')
 
@@ -49,10 +48,10 @@ class WMDSummarizer(Reader):
         logger.debug('computing document nBOW')
         self._doc_nBOW = self._compute_nBOW(range(len(self.sentences)))
 
-    def _embed(self):
+    def _embed(self) -> None:
         """Compute word embeddings."""
-        self.index_to_token = []
-        self.token_to_index = {}
+        self.index_to_token: List[str] = []
+        self.token_to_index: Mapping[str, int] = {}
 
         embeddings = []
 
@@ -66,22 +65,26 @@ class WMDSummarizer(Reader):
             embeddings.append(self.model.get_word_vector(token))
         self.embeddings = numpy.vstack(embeddings)
 
-    def _compute_BOWs(self):
-        self._BOWs = []
+    def _compute_BOWs(self) -> None:
+        self._BOWs: List[collections.Counter] = []
         for i, sentence in enumerate(self.sentences):
             self._BOWs.append(collections.Counter({
                 self.token_to_index[token]: sentence.tokens.count(token)
                 for token in sentence.tokens
             }))
 
-    def _compute_nBOW(self, indices):
+    def _compute_nBOW(self, indices: Iterable[int]) -> fwmd.NBOW:
         BOW = sum((self._BOWs[i] for i in indices), collections.Counter())
         word_indices, weights = zip(*BOW.items())
         weights = numpy.array(weights, dtype=numpy.float32)
         normalization = sum(len(self.sentences[i].tokens) for i in indices)
-        return list(word_indices), weights / normalization
+        return fwmd.NBOW(list(word_indices), weights / normalization)
 
-    def _most_similar(self, keys, indices_list, k=1):
+    _T = TypeVar('_T', bound=Hashable)
+
+    def _most_similar(self, keys: Sequence[_T],
+                      indices_list: Sequence[Iterable[int]], k: int = 1
+                      ) -> _T:
         query = self._doc_nBOW
         nBOWs = [self._compute_nBOW(indices) for indices in indices_list]
         logger.debug('computing most similar nBOW amongst {} nBOWs.'.format(
@@ -95,7 +98,7 @@ class WMDSummarizer(Reader):
                 time.time() - start))
         return nn[0][1]
 
-    def greedy_approximation(self, summary_size=100):
+    def greedy_approximation(self, summary_size: int = 100) -> Set[int]:
         """Greedy approximation for finding the best set of sentences.
 
         Args:
@@ -109,7 +112,7 @@ class WMDSummarizer(Reader):
         logger.info('initializing the greedy approximation procedure')
 
         logger.debug('initializing the set of selected items')
-        S = set()
+        S: Set[int] = set()
 
         logger.debug('initializing the set of candidates')
         C = set(range(len(self.sentences)))
