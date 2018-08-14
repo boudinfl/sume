@@ -18,15 +18,16 @@
 
 """Concept-based ILP summarization methods."""
 
-from collections import defaultdict, deque
 
 import random
 import re
 import sys
+from collections import defaultdict, deque
+from typing import Deque, FrozenSet, Iterable, MutableMapping, Set, Tuple
 
 import pulp
 
-from ..base import State, Reader
+from ..base import Reader, State
 
 
 class ConceptBasedILPSummarizer(Reader):
@@ -40,37 +41,39 @@ class ConceptBasedILPSummarizer(Reader):
 
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, input_directory: str, file_extension: str = '') -> None:
         """Construct a concept based ILP summarizer.
 
         Args:
             args: args to pass on to the sume.base.Reader constructor.
             kwargs: kwargs to pass on to the sume.base.Reader constructor.
         """
-        super().__init__(*args, **kwargs)
-        self.weights = {}
-        self.c2s = defaultdict(set)
-        self.concept_sets = defaultdict(frozenset)
-        self.word_frequencies = defaultdict(int)
-        self.w2s = defaultdict(set)
+        super().__init__(input_directory, file_extension=file_extension)
+        self.weights: MutableMapping[str, int] = {}
+        self.c2s: MutableMapping[str, Set[int]] = defaultdict(set)
+        self.concept_sets: MutableMapping[int, FrozenSet[str]] = defaultdict(
+            frozenset)
+        self.word_frequencies: MutableMapping[str, int] = defaultdict(int)
+        self.w2s: MutableMapping[str, Set[int]] = defaultdict(set)
 
-    def compute_document_frequency(self):
+    def compute_document_frequency(self) -> None:
         """Compute the document frequency of each concept."""
+        weights: MutableMapping[str, Set[str]] = {}
         for i in range(len(self.sentences)):
 
             # for each concept
             for concept in self.sentences[i].concepts:
 
                 # add the document id to the concept weight container
-                if concept not in self.weights:
-                    self.weights[concept] = set([])
-                self.weights[concept].add(self.sentences[i].doc_id)
+                if concept not in weights:
+                    weights[concept] = set()
+                weights[concept].add(self.sentences[i].doc_id)
 
         # loop over the concepts and compute the document frequency
         for concept in self.weights:
-            self.weights[concept] = len(self.weights[concept])
+            self.weights[concept] = len(weights[concept])
 
-    def extract_concepts(self, n=2, stemming=True):
+    def extract_concepts(self, n: int = 2, stemming: bool = True) -> None:
         """Extract the ngrams of words from the input sentences.
 
         Args:
@@ -105,9 +108,7 @@ class ConceptBasedILPSummarizer(Reader):
                 # add the ngram to the concepts
                 self.sentences[i].concepts.append(' '.join(ngram))
 
-
-
-    def compute_word_frequency(self):
+    def compute_word_frequency(self) -> None:
         """Compute the frequency of each word in the set of documents."""
         for i, sentence in enumerate(self.sentences):
             for token in sentence.tokens:
@@ -118,7 +119,7 @@ class ConceptBasedILPSummarizer(Reader):
                 self.w2s[t].add(i)
                 self.word_frequencies[t] += 1
 
-    def prune_concepts(self, method="threshold", value=3):
+    def prune_concepts(self, method: str = "threshold", value: int = 3) -> None:
         """Prune the concepts for efficient summarization.
 
         Args:
@@ -156,25 +157,26 @@ class ConceptBasedILPSummarizer(Reader):
         for i in range(len(self.sentences)):
 
             # current sentence concepts
-            concepts = self.sentences[i].concepts
+            current_concepts = self.sentences[i].concepts
 
             # prune concepts
-            self.sentences[i].concepts = [c for c in concepts
+            self.sentences[i].concepts = [c for c in current_concepts
                                           if c in self.weights]
 
-    def compute_c2s(self):
+    def compute_c2s(self) -> None:
         """Compute the inverted concept to sentences dictionary."""
         for i, sentence in enumerate(self.sentences):
             for concept in sentence.concepts:
                 self.c2s[concept].add(i)
 
-    def compute_concept_sets(self):
+    def compute_concept_sets(self) -> None:
         """Compute the concept sets for each sentence."""
         for i, sentence in enumerate(self.sentences):
             for concept in sentence.concepts:
                 self.concept_sets[i] |= {concept}
 
-    def greedy_approximation(self, summary_size=100):
+    def greedy_approximation(self, summary_size: int = 100
+                             ) -> Tuple[float, Set[int]]:
         """Greedy approximation of the ILP model.
 
         Args:
@@ -209,7 +211,10 @@ class ConceptBasedILPSummarizer(Reader):
                 best_singleton = i
 
         # initialize the selected solution properties
-        sel_subset, sel_concepts, sel_length, sel_score = set(), set(), 0, 0
+        sel_subset = set()
+        sel_concepts: Set[str] = set()
+        sel_length = 0
+        sel_score = 0
 
         # greedily select a sentence
         while True:
@@ -245,8 +250,8 @@ class ConceptBasedILPSummarizer(Reader):
             # update sentence weights with the reverse index
             for concept in set(self.sentences[sentence_index].concepts):
                 if concept not in sel_concepts:
-                    for sentence in self.c2s[concept]:
-                        weights[sentence] -= self.weights[concept]
+                    for sentence_index in self.c2s[concept]:
+                        weights[sentence_index] -= self.weights[concept]
 
             # update the last selected subset property
             sel_concepts.update(self.sentences[sentence_index].concepts)
@@ -259,11 +264,11 @@ class ConceptBasedILPSummarizer(Reader):
         return sel_score, sel_subset
 
     def tabu_search(self,
-                    summary_size=100,
-                    memory_size=10,
-                    iterations=100,
-                    mutation_size=2,
-                    mutation_group=True):
+                    summary_size: int = 100,
+                    memory_size: int = 10,
+                    iterations: int = 100,
+                    mutation_size: int = 2,
+                    mutation_group: bool = True) -> Tuple[float, Set[int]]:
         """Greedy ILP model approximation with a tabu search meta-heuristic.
 
         Args:
@@ -307,7 +312,7 @@ class ConceptBasedILPSummarizer(Reader):
         best_subset, best_score = None, 0
         state = State()
         for i in range(iterations):
-            queue = deque([], memory_size)
+            queue: Deque[int] = deque([], memory_size)
             # greedily select sentences
             state = self.select_sentences(summary_size,
                                           weights,
@@ -329,11 +334,11 @@ class ConceptBasedILPSummarizer(Reader):
         return best_score, best_subset
 
     def select_sentences(self,
-                         summary_size,
-                         weights,
-                         state,
-                         tabu_set,
-                         mutation_group):
+                         summary_size: int,
+                         weights: MutableMapping[int, int],
+                         state: State,
+                         tabu_set: Iterable[int],
+                         mutation_group: bool) -> State:
         """Greedy sentence selector.
 
         Args:
@@ -403,7 +408,8 @@ class ConceptBasedILPSummarizer(Reader):
                         weights[sentence] -= self.weights[concept]
         return state
 
-    def unselect_sentences(self, weights, state, to_remove):
+    def unselect_sentences(self, weights: MutableMapping[int, int],
+                           state: State, to_remove: Set[int]) -> State:
         """Reverse operation of the select_sentences method.
 
         Args:
@@ -433,10 +439,10 @@ class ConceptBasedILPSummarizer(Reader):
         return state
 
     def solve_ilp_problem(self,
-                          summary_size=100,
-                          solver='glpk',
-                          excluded_solutions=[],
-                          unique=False):
+                          summary_size: int = 100,
+                          solver: str = 'glpk',
+                          excluded_solutions: Iterable[Set[int]] = [],
+                          unique: bool = False) -> Tuple[float, Set[int]]:
         """Solve the ILP formulation of the concept-based model.
 
         Args:
@@ -454,16 +460,16 @@ class ConceptBasedILPSummarizer(Reader):
 
         """
         # initialize container shortcuts
-        concepts = self.weights.keys()
+        concepts_unsorted = self.weights.keys()
         w = self.weights
         L = summary_size
-        C = len(concepts)
+        C = len(concepts_unsorted)
         S = len(self.sentences)
 
         if not self.word_frequencies:
             self.compute_word_frequency()
 
-        tokens = self.word_frequencies.keys()
+        tokens = list(self.word_frequencies.keys())
         f = self.word_frequencies
         T = len(tokens)
 
