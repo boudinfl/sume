@@ -33,35 +33,28 @@ with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
 
 
-def _install_custom():
-    def pip_install(package, cwd=None):
-        subprocess.check_call([sys.executable,
-                               '-m',
-                               'pip',
-                               'install',
-                               package],
+def _install_custom() -> None:
+    def pip_install(package: str, cwd: str = None) -> None:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package],
                               cwd=cwd)
 
-    pip_install('numpy')
-    pip_install('Cython')
-    pip_install('wmd')
     pip_install('.', cwd='fastText')
 
 
 class InstallCommand(install):
-    """Hack to circumvent fasttext and wmd install limitations."""
+    """Hack to circumvent fastText install limitations."""
 
-    def run(self):
-        """Hack to install wmd and fastText."""
+    def run(self) -> None:
+        """Hack to install fastText."""
         _install_custom()
         install.run(self)
 
 
 class DevelopCommand(develop):
-    """Hack to circumvent fasttext and wmd install limitations."""
+    """Hack to circumvent fastText install limitations."""
 
-    def run(self):
-        """Hack to install wmd and fastText."""
+    def run(self) -> None:
+        """Hack to install fastText."""
         _install_custom()
         develop.run(self)
 
@@ -76,11 +69,11 @@ setup(
     author='Florian Boudin',
     author_email='florian.boudin@univ-nantes.fr',
     url='https://github.com/boudinfl/sume',
-    python_requires='>=3.4',
+    python_requires='>=3.6',
     packages=find_packages(exclude=('tests',)),
     setup_requires=['pytest-runner'],
-    # wmd and fastText are installed in custom commands
-    install_requires=['PuLP', 'gensim', 'nltk', 'sklearn'],
+    # fastText is installed in custom commands
+    install_requires=['PuLP', 'numpy', 'nltk'],
     tests_require=['pytest', 'pytest-datadir'],
     include_package_data=True,
     license='GNU General Public License v3 (GPLv3)',
@@ -91,9 +84,8 @@ setup(
         'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Text Processing'
     ],
