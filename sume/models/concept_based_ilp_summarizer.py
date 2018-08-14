@@ -70,7 +70,7 @@ class ConceptBasedILPSummarizer(Reader):
                 weights[concept].add(self.sentences[i].doc_id)
 
         # loop over the concepts and compute the document frequency
-        for concept in self.weights:
+        for concept in weights:
             self.weights[concept] = len(weights[concept])
 
     def extract_concepts(self, n: int = 2, stemming: bool = True) -> None:
