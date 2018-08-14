@@ -19,11 +19,12 @@
 """Reconstruct the citations from the DUC/TAC files."""
 
 import argparse
-import sys
 import codecs
+import sys
+from typing import List
 
 
-def main():
+def main() -> None:
     """Entry point."""
     parser = argparse.ArgumentParser(
         description='Extract the textual content from the DUC/TAC files.')
@@ -37,7 +38,7 @@ def main():
         # read the lines from the input file
         lines = f.readlines()
 
-        stacked_lines = []
+        stacked_lines: List[str] = []
         in_citation = False
 
         openings = []

@@ -23,7 +23,7 @@ import codecs
 import re
 
 
-def remove_byline(text):
+def remove_byline(text: str) -> str:
     """Remove the newswire byline from the textual content.
 
     Examples of headers are:
@@ -43,7 +43,7 @@ def remove_byline(text):
     return text
 
 
-def main():
+def main() -> None:
     """Entry point."""
     parser = argparse.ArgumentParser(
         description='Extract the textual content from the DUC/TAC files.')
