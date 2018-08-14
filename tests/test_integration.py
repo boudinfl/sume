@@ -16,11 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+from pathlib import Path
+
 import nltk
+
 from sume.models.concept_based_ilp_summarizer import ConceptBasedILPSummarizer
 
 
-def test_integration(shared_datadir):
+def test_integration(shared_datadir: Path) -> None:
     nltk.download('stopwords')
     # directory from which text documents to be summarized are loaded. Input
     # files are expected to be in one tokenized sentence per line format.

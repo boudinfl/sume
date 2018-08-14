@@ -18,10 +18,12 @@
 
 from __future__ import unicode_literals
 
+from pathlib import Path
+
 import sume.base
 
 
-def test_reader(shared_datadir):
+def test_reader(shared_datadir: Path) -> None:
     path = str((shared_datadir / 'cluster').resolve())
     lf = sume.base.Reader(path)
     assert len(lf.sentences) == 9
@@ -29,7 +31,7 @@ def test_reader(shared_datadir):
     assert len(lf.sentences) == 5
 
 
-def test_untokenize():
+def test_untokenize() -> None:
     tokens_list = [
         ['I', 'untokenize', '.'],
         ['I', ' have', 'weird ', ' spaces ', '.'],
