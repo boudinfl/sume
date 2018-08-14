@@ -45,7 +45,6 @@ def _install_custom():
     pip_install('numpy')
     pip_install('Cython')
     pip_install('wmd')
-    pip_install('.', cwd='pybind11')
     pip_install('.', cwd='fastText')
 
 
