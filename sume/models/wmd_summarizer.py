@@ -7,7 +7,8 @@
 import collections
 import logging
 import time
-from typing import Hashable, Iterable, List, Mapping, Sequence, Set, TypeVar
+from typing import (Hashable, Iterable, List, Mapping, Sequence, Set, TypeVar,
+                    Union)
 
 import fastText
 import numpy
@@ -22,8 +23,8 @@ logger = logging.getLogger(__name__)
 class WMDSummarizer(Reader):
     """Word Mover's Distance summarization model."""
 
-    def __init__(self, model: fastText.FastText._FastText, input_directory: str,
-                 file_extension: str = '') -> None:
+    def __init__(self, model: Union[fastText.FastText._FastText, str],
+                 input_directory: str, file_extension: str = '') -> None:
         """Construct a WMD summarizer.
 
         Args:
@@ -36,8 +37,12 @@ class WMDSummarizer(Reader):
 
         logger.info('initializing WMD summarizer')
 
-        logger.debug('loading fastText model')
-        self.model = fastText.load_model(model)
+        if isinstance(model, fastText.FastText._FastText):
+            logger.debug('fastText model already loaded')
+            self.model = model
+        else:
+            logger.debug('loading fastText model')
+            self.model = fastText.load_model(model)
 
         logger.debug('embedding words')
         self._embed()
