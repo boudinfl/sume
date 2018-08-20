@@ -6,6 +6,7 @@
 
 import collections
 import logging
+import multiprocessing
 import time
 from typing import (Hashable, Iterable, List, Mapping, Sequence, Set, TypeVar,
                     Union)
@@ -24,7 +25,8 @@ class WMDSummarizer(Reader):
     """Word Mover's Distance summarization model."""
 
     def __init__(self, model: Union[fastText.FastText._FastText, str],
-                 input_directory: str, file_extension: str = '') -> None:
+                 input_directory: str, file_extension: str = '',
+                 n_workers: int = multiprocessing.cpu_count()) -> None:
         """Construct a WMD summarizer.
 
         Args:
@@ -35,7 +37,9 @@ class WMDSummarizer(Reader):
         """
         super().__init__(input_directory, file_extension=file_extension)
 
-        logger.info('initializing WMD summarizer')
+        logger.debug('initializing WMD summarizer')
+
+        self.n_workers = n_workers
 
         if isinstance(model, fastText.FastText._FastText):
             logger.debug('fastText model already loaded')
@@ -96,7 +100,8 @@ class WMDSummarizer(Reader):
             len(nBOWs)))
         start = time.time()
         calc = fwmd.WMD(self.embeddings)
-        nn = calc.nn(query, dict(zip(keys, nBOWs)), k=1, m_base='n', m_coeff=1)
+        nn = calc.nn(query, dict(zip(keys, nBOWs)), k=1, m_base='n', m_coeff=1,
+                     n_workers=self.n_workers)
         logger.debug(
             'computed the {} most similar nBOWs in {:.2f} seconds'.format(
                 k,
@@ -114,7 +119,7 @@ class WMDSummarizer(Reader):
               objective function and the set of selected sentences as a tuple.
 
         """
-        logger.info('initializing the greedy approximation procedure')
+        logger.debug('initializing the greedy approximation procedure')
 
         logger.debug('initializing the set of selected items')
         S: Set[int] = set()
