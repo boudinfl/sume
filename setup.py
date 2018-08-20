@@ -24,8 +24,6 @@ import subprocess
 import sys
 
 from setuptools import find_packages, setup
-from setuptools.command.develop import develop
-from setuptools.command.install import install
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -33,33 +31,6 @@ with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
 
 
-def _install_custom() -> None:
-    def pip_install(package: str, cwd: str = None) -> None:
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', package],
-                              cwd=cwd)
-
-    pip_install('.', cwd='fastText')
-
-
-class InstallCommand(install):
-    """Hack to circumvent fastText install limitations."""
-
-    def run(self) -> None:
-        """Hack to install fastText."""
-        _install_custom()
-        install.run(self)
-
-
-class DevelopCommand(develop):
-    """Hack to circumvent fastText install limitations."""
-
-    def run(self) -> None:
-        """Hack to install fastText."""
-        _install_custom()
-        develop.run(self)
-
-
-# Where the magic happens:
 setup(
     name='sume',
     version='2.0.0',
@@ -72,7 +43,6 @@ setup(
     python_requires='>=3.6',
     packages=find_packages(exclude=('tests',)),
     setup_requires=['pytest-runner'],
-    # fastText is installed in custom commands
     install_requires=['PuLP', 'numpy', 'nltk'],
     tests_require=['pytest', 'pytest-datadir'],
     include_package_data=True,
@@ -88,9 +58,5 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
         'Topic :: Text Processing'
-    ],
-    cmdclass={
-        'install': InstallCommand,
-        'develop': DevelopCommand
-    }
+    ]
 )

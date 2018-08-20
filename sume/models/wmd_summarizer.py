@@ -11,7 +11,6 @@ import time
 from typing import (Hashable, Iterable, List, Mapping, Sequence, Set, TypeVar,
                     Union)
 
-import fastText
 import numpy
 
 import fwmd
@@ -24,7 +23,7 @@ logger = logging.getLogger(__name__)
 class WMDSummarizer(Reader):
     """Word Mover's Distance summarization model."""
 
-    def __init__(self, model: Union[fastText.FastText._FastText, str],
+    def __init__(self, embeddings: Callable[[str], numpy.ndarray],
                  input_directory: str, file_extension: str = '',
                  n_workers: int = multiprocessing.cpu_count()) -> None:
         """Construct a WMD summarizer.
@@ -38,15 +37,8 @@ class WMDSummarizer(Reader):
         super().__init__(input_directory, file_extension=file_extension)
 
         logger.debug('initializing WMD summarizer')
-
+        self.embeddings = embeddings
         self.n_workers = n_workers
-
-        if isinstance(model, fastText.FastText._FastText):
-            logger.debug('fastText model already loaded')
-            self.model = model
-        else:
-            logger.debug('loading fastText model')
-            self.model = fastText.load_model(model)
 
         logger.debug('embedding words')
         self._embed()
@@ -71,7 +63,7 @@ class WMDSummarizer(Reader):
         for i, token in enumerate(tokens):
             self.index_to_token.append(token)
             self.token_to_index[token] = i
-            embeddings.append(self.model.get_word_vector(token))
+            embeddings.append(self.embeddings(token))
         self.embeddings = numpy.vstack(embeddings)
 
     def _compute_BOWs(self) -> None:
