@@ -8,12 +8,11 @@ import collections
 import logging
 import multiprocessing
 import time
-from typing import (Hashable, Iterable, List, Mapping, Sequence, Set, TypeVar,
+from typing import (Callable, Hashable, Iterable, List, Mapping, Sequence, Set, TypeVar,
                     Union)
 
-import numpy
-
 import fwmd
+import numpy
 
 from ..base import Reader
 
